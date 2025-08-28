@@ -40,12 +40,12 @@ do
             ;;
         -p | --pantalla)
             PANTALLA=true
-            shift 2
+            shift 
             
             ;;
         -a | --archivo)
             ARCHIVO="$2"
-            shift
+            shift 2
             
             ;;
         -h | --help)
@@ -58,6 +58,7 @@ do
             ;;
         *) # default: 
             echo "error"
+            
             exit 1
             ;;
     esac
@@ -69,12 +70,17 @@ then
     exit 1
 fi
 
-if [[ $PANTALLA == true && $ARCHIVO = "" ]]
+if [[ $PANTALLA == true && $ARCHIVO != "" ]]
 then
-    echo "ejercicio1: se ingreso ruta del archivo con opcion de pantalla." >&2
+    echo "ejercicio1: conflicting arguments." >&2
     exit 1
 fi
 
 miArray=$(awk -f ejercicio1.awk $DIRECTORIO)
 
-echo ${miArray[@]} | jq
+if [ $PANTALLA == true ]
+then
+    echo ${miArray[@]} | jq
+else
+    echo ${miArray[@]} | jq > $ARCHIVO
+fi
