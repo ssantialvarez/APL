@@ -32,8 +32,8 @@ eval set -- "$options"
 
 while true
 do
-    case "$1" in # switch ($1) { 
-        -d | --directorio) # case "-e":
+    case "$1" in 
+        -d | --directorio)
             DIRECTORIO="$2"
             shift 2
 
@@ -57,22 +57,26 @@ do
             break
             ;;
         *) # default: 
-            echo "error"
+            "ejercicio1: opcion no reconocida: $1" >&2
             
             exit 1
             ;;
     esac
 done
 
-if [ $DIRECTORIO = "" ]
+if [ -z "$DIRECTORIO" ]; 
 then
-    echo "ejercicio1: no se ingreso ruta del directorio." >&2
+    echo "ejercicio1: no se ingresó la ruta del directorio." >&2
     exit 1
 fi
 
-if [[ $PANTALLA == true && $ARCHIVO != "" ]]
+if [[ "$PANTALLA" = false && -z "$ARCHIVO" ]]; 
 then
-    echo "ejercicio1: conflicting arguments." >&2
+    echo "ejercicio1: no se especificó archivo de salida ni pantalla." >&2
+    exit 1
+elif [[ $PANTALLA = true && -n "$ARCHIVO" ]]
+then
+    echo "ejercicio1: argumentos conflictivos." >&2
     exit 1
 fi
 
