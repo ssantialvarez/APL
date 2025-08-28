@@ -1,5 +1,4 @@
 BEGIN{
-    #print "Empieza procesamiento del archivo"
     # https://stackoverflow.com/questions/72811162/how-can-i-send-the-output-of-an-awk-script-to-a-file
     # tee = "tee ./temp/out.txt" 
     resultado = "{"
@@ -11,20 +10,16 @@ BEGIN{
 }
 
 function calculaPromedio(){
-    # print fecha
+    # https://stackoverflow.com/questions/27028928/awk-concatenate-two-string-variable-and-assign-to-a-third
     resultado = resultado "\""fecha"\"" ": {"
     for (x = 0; x < 3; x++) {
         contador = vector[canales[x], 2]
         
         if(contador > 0){
-            # printf("%s\n", canales[x])
-            
-            # printf("%f\n", vector[canales[x], 0]/contador)
             t_prom = vector[canales[x], 0]/contador
             
-            # printf("%f\n", vector[canales[x], 1]/contador)
             nota_prom = vector[canales[x], 1]/contador
-
+    
             resultado = resultado "\""canales[x] "\": {\"tiempo_respuesta_promedio\": " t_prom ", \"nota_satisfaccion_promedio\": " nota_prom "}"
             
             if(x < 2)
@@ -44,7 +39,6 @@ function calculaPromedio(){
     split($2,a," ");
     if (fecha == "")
         fecha = a[1]
-    # print a[1] | tee
 }
 
 fecha != a[1]{
@@ -67,10 +61,4 @@ END{
     calculaPromedio()
     resultado = resultado "}"
     print resultado
-    # for (clave in b) {
-        # print clave, palabras[clave]
-        # printf("%s => %f\n", clave, b[clave]);
-    # }
-    # close(tee)
-    # print "Termina procesamiento del archivo."
 }

@@ -9,7 +9,7 @@ El archivo de registro tiene un formato de campos fijos, donde la posición de c
 significado, y los campos están separados por un pipe (|). El nombre del archivo tendrá la fecha de registro 
 de las encuestas. 
  
-**Formato:** ID_ENCUESTA|FECHA|CANAL|TIEMPO_RESPUESTA|NOTA_SATISFACCION
+**Formato:** ID_ENCUESTA|FECHA|CANAL|TIEMPO_RESPUESTA|NOTA_SATISFACCION    
 **Campos:** 
 + **ID_ENCUESTA:** numérico 
 + **FECHA:** texto (yyyy-mm-dd hh:mm:ss) 
