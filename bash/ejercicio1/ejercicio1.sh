@@ -15,8 +15,8 @@ EOF
     exit 1
 }
 
-declare -a miArray
-miArray=()
+declare -a RESULTADO
+RESULTADO=()
 DIRECTORIO=""
 ARCHIVO=""
 PANTALLA=false
@@ -24,7 +24,7 @@ PANTALLA=false
 options=$(getopt -o d:a:ph --l help,directorio:,pantalla,archivo: -- "$@" 2> /dev/null)
 if [ "$?" != "0" ]
 then
-    echo 'Opciones incorrectas'
+    echo "$0: Opciones incorrectas"
     exit 1
 fi
 
@@ -57,7 +57,7 @@ do
             break
             ;;
         *) # default: 
-            "ejercicio1: opcion no reconocida: $1" >&2
+            "$0: opcion no reconocida: $1" >&2
             
             exit 1
             ;;
@@ -66,25 +66,23 @@ done
 
 if [ -z "$DIRECTORIO" ]; 
 then
-    echo "ejercicio1: no se ingresó la ruta del directorio." >&2
+    echo "$0: no se ingresó la ruta del directorio." >&2
     exit 1
-fi
-
-if [[ "$PANTALLA" = false && -z "$ARCHIVO" ]]; 
+elif [[ "$PANTALLA" = false && -z "$ARCHIVO" ]]; 
 then
-    echo "ejercicio1: no se especificó archivo de salida ni pantalla." >&2
+    echo "$0: no se especificó archivo de salida ni pantalla." >&2
     exit 1
 elif [[ $PANTALLA = true && -n "$ARCHIVO" ]]
 then
-    echo "ejercicio1: argumentos conflictivos." >&2
+    echo "$0: argumentos conflictivos." >&2
     exit 1
 fi
 
-miArray=$(awk -f ejercicio1.awk $DIRECTORIO)
+RESULTADO=$(awk -f ejercicio1.awk $DIRECTORIO)
 
-if [ $PANTALLA == true ]
+if [ $PANTALLA = true ]
 then
-    echo ${miArray[@]} | jq
+    echo ${RESULTADO[@]} | jq
 else
-    echo ${miArray[@]} | jq > $ARCHIVO
+    echo ${RESULTADO[@]} | jq > $ARCHIVO
 fi
