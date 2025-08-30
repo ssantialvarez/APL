@@ -78,11 +78,31 @@ then
     exit 1
 fi
 
-# mapfile -t RESULTADO < <(LC_NUMERIC=C awk -f ejercicio1.awk "$DIRECTORIO")
+# Obtiene todos los archivos de encuesta que hay en el directorio
+ARCHIVOS=$(ls -A "$DIRECTORIO")
+ENCUESTAS="./temp/fechas.txt"
+
+
+# Se verifica que el directorio tenga archivos
+if [ "$(ls -A "$DIRECTORIO")" ]
+then
+    mkdir "./temp"
+    touch $ENCUESTAS
+    for item in $ARCHIVOS
+    do
+        cat $DIRECTORIO"/"$item >> $ENCUESTAS
+        echo  >> $ENCUESTAS
+    done
+else
+    echo "$0: no hay archivos para procesar." >&2
+    exit 1
+fi
+
+sort -t'|' -k2,2 $ENCUESTAS -o $ENCUESTAS
 
 if [ $PANTALLA = true ]
 then
-    LC_NUMERIC=C awk -f ejercicio1.awk "$DIRECTORIO" | \
+    LC_NUMERIC=C awk -f ejercicio1.awk "$ENCUESTAS" | \
     jq -R -s '
     split("\n")[:-1] 
     | map(split("\t"))
@@ -93,7 +113,7 @@ then
         }}
         )'
 else
-    LC_NUMERIC=C awk -f ejercicio1.awk "$DIRECTORIO" | \
+    LC_NUMERIC=C awk -f ejercicio1.awk "$ENCUESTAS" | \
     jq -R -s '
     split("\n")[:-1] 
     | map(split("\t"))
@@ -105,44 +125,6 @@ else
         )' > $ARCHIVO
 fi
 
+rm -rf ./temp
 
-#mapfile -t RESULTADO < <(awk -f prueba.awk "$DIRECTORIO")
-
-#CONTADOR=0
-#FECHA=""
-#NOTA_PARCIAL=0
-#TIEMPO_PARCIAL=0
-
-#for ((i=0; i<${#RESULTADO[@]}; i++)); do
-#   ITEM=${RESULTADO[$i]}
-#   i=$((i+1))
-#   case "$ITEM" in 
-#       Fecha)
-#           #echo ${RESULTADO[$i]}
-#           if [[ $i -eq 0 || $FECHA != ${RESULTADO[$i]} ]]
-#           then
-#               FECHA=${RESULTADO[$i]}
-#               echo $TIEMPO_PARCIAL/$CONTADOR
-#               CONTADOR=0
-#           fi
-#           ;;
-#       Nota)
-#            #echo ${RESULTADO[$i]}
-#            
-#            ;;
-#        Tiempo)
-#            #echo ${RESULTADO[$i]}
-#            TIEMPO_PARCIAL=$(($TIEMPO_PARCIAL+${RESULTADO[$i]}))
-#            ;;
-#    Canal)
-#         #echo ${RESULTADO[$i]}
-#          ;;
-#       *) # default: 
-#            
-#            exit 1
-#           ;;
-#   esac
-#    CONTADOR=$((CONTADOR+1))
-#    #echo "for: ${RESULTADO[$i]}"
-#done
-
+exit 0
