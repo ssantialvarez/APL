@@ -78,14 +78,31 @@ then
     exit 1
 fi
 
-RESULTADO=$(LC_NUMERIC=C awk -f ejercicio1.awk $DIRECTORIO)
-
+# mapfile -t RESULTADO < <(LC_NUMERIC=C awk -f ejercicio1.awk "$DIRECTORIO")
 
 if [ $PANTALLA = true ]
 then
-    echo ${RESULTADO[@]} | jq
+    LC_NUMERIC=C awk -f ejercicio1.awk "$DIRECTORIO" | \
+    jq -R -s '
+    split("\n")[:-1] 
+    | map(split("\t"))
+    | reduce .[] as $row ({}; 
+        .[$row[0]] += { ($row[1]): {
+            tiempo_respuesta_promedio: ($row[2]|tonumber),
+            nota_satisfaccion_promedio: ($row[3]|tonumber)
+        }}
+        )'
 else
-    echo ${RESULTADO[@]} | jq > $ARCHIVO
+    LC_NUMERIC=C awk -f ejercicio1.awk "$DIRECTORIO" | \
+    jq -R -s '
+    split("\n")[:-1] 
+    | map(split("\t"))
+    | reduce .[] as $row ({}; 
+        .[$row[0]] += { ($row[1]): {
+            tiempo_respuesta_promedio: ($row[2]|tonumber),
+            nota_satisfaccion_promedio: ($row[3]|tonumber)
+        }}
+        )' > $ARCHIVO
 fi
 
 

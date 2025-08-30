@@ -18,7 +18,7 @@ function calculaPromedio(){
             nota_prom = vector[canales[x], 1]/contador
     
             resultado = resultado "\""canales[x] "\": {\"tiempo_respuesta_promedio\": " sprintf("%.2f", t_prom) ", \"nota_satisfaccion_promedio\": " sprintf("%.2f", nota_prom) "}"
-            
+            printf("%s\t%s\t%.2f\t%.2f\n", fecha, canales[x], t_prom, nota_prom)
             if(x < 2)
                 resultado = resultado ", "
             for (y = 0; y < 3; y++){
@@ -26,7 +26,7 @@ function calculaPromedio(){
             }
         }
     }
-
+    
     resultado = resultado "}"
 }
 
@@ -56,5 +56,5 @@ function calculaPromedio(){
 END{
     calculaPromedio()
     resultado = resultado "}"
-    print resultado
+    # print resultado
 }
