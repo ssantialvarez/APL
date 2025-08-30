@@ -1,6 +1,4 @@
 BEGIN{
-    # https://stackoverflow.com/questions/72811162/how-can-i-send-the-output-of-an-awk-script-to-a-file
-    # tee = "tee ./temp/out.txt" 
     resultado = "{"
     fecha = ""
     canales[0] = "Chat"
@@ -10,7 +8,6 @@ BEGIN{
 }
 
 function calculaPromedio(){
-    # https://stackoverflow.com/questions/27028928/awk-concatenate-two-string-variable-and-assign-to-a-third
     resultado = resultado "\""fecha"\"" ": {"
     for (x = 0; x < 3; x++) {
         contador = vector[canales[x], 2]
@@ -20,7 +17,7 @@ function calculaPromedio(){
             
             nota_prom = vector[canales[x], 1]/contador
     
-            resultado = resultado "\""canales[x] "\": {\"tiempo_respuesta_promedio\": " t_prom ", \"nota_satisfaccion_promedio\": " nota_prom "}"
+            resultado = resultado "\""canales[x] "\": {\"tiempo_respuesta_promedio\": " sprintf("%.2f", t_prom) ", \"nota_satisfaccion_promedio\": " sprintf("%.2f", nota_prom) "}"
             
             if(x < 2)
                 resultado = resultado ", "
@@ -30,31 +27,30 @@ function calculaPromedio(){
         }
     }
 
-    resultado = resultado "} "
+    resultado = resultado "}"
 }
 
 {
-    # https://stackoverflow.com/questions/8009664/how-to-split-a-delimited-string-into-an-array-in-awk
     # Separa el campo fecha-hora segun el espacio entre la fecha y la hora, colocando ambos datos en un array llamado a.
     split($2,a," ");
-    if (fecha == "")
+    
+    if (fecha != a[1]){
+        if(fecha != ""){
+            calculaPromedio()
+            resultado = resultado ", "
+        }
+        
         fecha = a[1]
-}
+    }
 
-fecha != a[1]{
-    calculaPromedio()
-    resultado = resultado ", "
-    fecha = a[1]
-}
-
-{
     # Almacena el 4to campo -> TIEMPO_RESPUESTA    
-    vector[$3, 0] = $4
+    vector[$3, 0] += $4
     # Almacena el 5to campo -> NOTA_SATISFACCION
-    vector[$3, 1] = $5
+    vector[$3, 1] += $5
     # Aumenta el contador del canal
-    vector[$3, 2]++ 
+    vector[$3, 2]++         
 }
+
 
 
 END{

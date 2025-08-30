@@ -24,7 +24,7 @@ PANTALLA=false
 options=$(getopt -o d:a:ph --l help,directorio:,pantalla,archivo: -- "$@" 2> /dev/null)
 if [ "$?" != "0" ]
 then
-    echo "$0: Opciones incorrectas"
+    echo "$0: no se ingresó la ruta del directorio o no se especificó archivo de salida ni pantalla." >&2
     exit 1
 fi
 
@@ -78,7 +78,8 @@ then
     exit 1
 fi
 
-RESULTADO=$(awk -f ejercicio1.awk $DIRECTORIO)
+RESULTADO=$(LC_NUMERIC=C awk -f ejercicio1.awk $DIRECTORIO)
+
 
 if [ $PANTALLA = true ]
 then
@@ -86,3 +87,45 @@ then
 else
     echo ${RESULTADO[@]} | jq > $ARCHIVO
 fi
+
+
+#mapfile -t RESULTADO < <(awk -f prueba.awk "$DIRECTORIO")
+
+#CONTADOR=0
+#FECHA=""
+#NOTA_PARCIAL=0
+#TIEMPO_PARCIAL=0
+
+#for ((i=0; i<${#RESULTADO[@]}; i++)); do
+#   ITEM=${RESULTADO[$i]}
+#   i=$((i+1))
+#   case "$ITEM" in 
+#       Fecha)
+#           #echo ${RESULTADO[$i]}
+#           if [[ $i -eq 0 || $FECHA != ${RESULTADO[$i]} ]]
+#           then
+#               FECHA=${RESULTADO[$i]}
+#               echo $TIEMPO_PARCIAL/$CONTADOR
+#               CONTADOR=0
+#           fi
+#           ;;
+#       Nota)
+#            #echo ${RESULTADO[$i]}
+#            
+#            ;;
+#        Tiempo)
+#            #echo ${RESULTADO[$i]}
+#            TIEMPO_PARCIAL=$(($TIEMPO_PARCIAL+${RESULTADO[$i]}))
+#            ;;
+#    Canal)
+#         #echo ${RESULTADO[$i]}
+#          ;;
+#       *) # default: 
+#            
+#            exit 1
+#           ;;
+#   esac
+#    CONTADOR=$((CONTADOR+1))
+#    #echo "for: ${RESULTADO[$i]}"
+#done
+
