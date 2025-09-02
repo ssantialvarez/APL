@@ -35,16 +35,42 @@ fi
 
 IFS=',' read -ra PAISES <<< "$NOMBRE"
 
-# Temporal, mostrar las variables
+mkdir -p cache
+
+get_country_info() {
+    local pais="$1"
+    response=$(curl -s -w "%{http_code}" "https://restcountries.com/v3.1/name/$pais")
+    local status="${response: -3}"
+    local body="${response::-3}"
+    echo "$status|$body"
+}
 
 for pais in "${PAISES[@]}"; do
     echo ""
     echo "Nombre del país: $pais"
-    response=$(curl -s -w "%{http_code}" "https://restcountries.com/v3.1/name/$pais")
 
-    status="${response: -3}"
-    # echo "Código de estado: $status"
-    body="${response::-3}"
+    cache_file="cache/$pais.json"
+    if [[ -f "$cache_file" ]]; then
+        echo "Cargando información de caché para el país $pais"
+
+        if [[ -z "$TTL" || $(find "$cache_file" -mmin +$TTL) ]]; then
+            echo "La caché ha expirado o no está disponible"
+            echo "Obteniendo información en tiempo real para el país $pais"
+            result=$(get_country_info "$pais")
+            status="${result%%|*}"
+            # echo "Código de estado: $status"
+            body="${result#*|}"
+        else
+            body=$(<"$cache_file")
+            status="200"
+        fi
+    else
+        echo "Obteniendo información en tiempo real para el país $pais"
+        result=$(get_country_info "$pais")
+        status="${result%%|*}"
+        # echo "Código de estado: $status"
+        body="${result#*|}"
+    fi
 
     if [[ "$status" != "200" ]]; then
         echo "Error: País no encontrado"
