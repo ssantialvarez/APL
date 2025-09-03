@@ -16,8 +16,9 @@ jobs:
 
       - name: Install Bats
         run: |
-          sudo apt-get update
-          sudo apt-get install -y bats
+          git clone https://github.com/bats-core/bats-core.git
+          cd bats-core
+          ./install.sh /usr/local
 
       - name: Run Bats tests
-        run: ./test/bats/bin/bats test/test.bats
+        run: bats test/test.bats
