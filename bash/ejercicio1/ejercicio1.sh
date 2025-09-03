@@ -16,13 +16,12 @@ EOF
 }
 
 
-
-declare -a RESULTADO
-RESULTADO=()
+declare -a ENCUESTAS
+ENCUESTAS=()
 DIRECTORIO=""
 ARCHIVO=""
 PANTALLA=false
-ENCUESTAS="/tmp/fechas.txt"
+PATH_ENCUESTAS="/tmp/fechas.txt"
 
 options=$(getopt -o d:a:ph --l help,directorio:,pantalla,archivo: -- "$@" 2> /dev/null)
 if [ "$?" != "0" ]
@@ -96,36 +95,89 @@ then
     exit 1
 fi
 
-touch $ENCUESTAS
+touch $PATH_ENCUESTAS
 for item in ${ARCHIVOS[@]}
 do
-    cat $item >> $ENCUESTAS
-    echo  >> $ENCUESTAS
+    cat $item >> $PATH_ENCUESTAS
+    echo  >> $PATH_ENCUESTAS
 done
 
-sort -t'|' -k2,2 $ENCUESTAS -o $ENCUESTAS
+awk 'BEGIN{FS="|"; tee = "tee /tmp/out.txt"}{split($2,a," "); print a[1], $3, $4, $5 | tee}' $PATH_ENCUESTAS >> /dev/null 
 
-#LC_NUMERIC=C para convertir decimales con coma a decimales con punto
-output=$(
-  LC_NUMERIC=C awk -f ejercicio1.awk "$ENCUESTAS" | \
-  jq -R -s '
-  split("\n")[:-1] 
-  | map(split("\t"))
-  | reduce .[] as $row ({}; 
-      .[$row[0]] += { ($row[1]): {
-          tiempo_respuesta_promedio: ($row[2]|tonumber),
-          nota_satisfaccion_promedio: ($row[3]|tonumber)
-      }}
-  )'
-)
+rm $PATH_ENCUESTAS
+
+PATH_ENCUESTAS="/tmp/out.txt"
+sort -k1,1 -k2,2 $PATH_ENCUESTAS -o $PATH_ENCUESTAS
+mapfile -t ENCUESTAS < <(cat $PATH_ENCUESTAS)
+
+rm $PATH_ENCUESTAS
+
+IFS=' ' read -ra ADDR <<< "${ENCUESTAS[0]}"
+
+CONTADOR=0
+
+FECHA=${ADDR[0]}
+CANAL=${ADDR[1]}
+TIEMPO_PROMEDIO=0
+NOTA_PROMEDIO=0
+
+CALCULAR=false
+
+JSON_OUTPUT="{}"
+
+
+for elem in "${ENCUESTAS[@]}"
+do 
+    IFS=' ' read -ra ADDR <<< "$elem"
+
+    if [[ ${ADDR[0]} != $FECHA || ${ADDR[1]} != $CANAL ]]
+    then
+        CALCULAR=true
+    else
+        TIEMPO_PROMEDIO=$(echo "$TIEMPO_PROMEDIO + ${ADDR[2]}" | bc -l)
+        NOTA_PROMEDIO=$(echo "$NOTA_PROMEDIO + ${ADDR[3]}" | bc -l)
+        (( CONTADOR+=1 ))
+    fi
+
+    if [ $CALCULAR = true ]
+    then
+        TIEMPO_PROMEDIO=$(echo "scale = 3; $TIEMPO_PROMEDIO / $CONTADOR" | bc -l)
+        NOTA_PROMEDIO=$(echo "scale = 3; $NOTA_PROMEDIO / $CONTADOR" | bc -l)
+        
+
+        # Formatear el canal en JSON
+        CANAL_JSON=$(jq -n \
+            --arg tiempo "$TIEMPO_PROMEDIO" \
+            --arg nota "$NOTA_PROMEDIO" \
+            '{
+                "tiempo_respuesta_promedio": ($tiempo | tonumber),
+                "nota_satisfaccion_promedio": ($nota | tonumber)
+            }')
+
+        # Agregar el canal al JSON de la fecha correspondiente
+        JSON_OUTPUT=$(echo "$JSON_OUTPUT" | jq \
+            --arg fecha "$FECHA" \
+            --arg canal "$CANAL" \
+            --argjson canal_data "$CANAL_JSON" \
+            '.[$fecha][$canal] = $canal_data')
+
+
+        
+        FECHA=${ADDR[0]}
+        CANAL=${ADDR[1]}
+        TIEMPO_PROMEDIO=${ADDR[2]}
+        NOTA_PROMEDIO=${ADDR[3]}
+        CONTADOR=1
+        CALCULAR=false
+    fi
+done
+
 
 if [ "$PANTALLA" = true ]
 then
-    echo "$output"
+    echo $JSON_OUTPUT | jq
 else
-    echo "$output" > "$ARCHIVO"
+    echo $JSON_OUTPUT | jq > "$ARCHIVO"
 fi
-
-rm $ENCUESTAS
 
 exit 0
