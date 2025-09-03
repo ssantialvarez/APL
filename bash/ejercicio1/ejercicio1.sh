@@ -15,11 +15,14 @@ EOF
     exit 1
 }
 
+
+
 declare -a RESULTADO
 RESULTADO=()
 DIRECTORIO=""
 ARCHIVO=""
 PANTALLA=false
+ENCUESTAS="/tmp/fechas.txt"
 
 options=$(getopt -o d:a:ph --l help,directorio:,pantalla,archivo: -- "$@" 2> /dev/null)
 if [ "$?" != "0" ]
@@ -64,67 +67,65 @@ do
     esac
 done
 
+
 if [ -z "$DIRECTORIO" ]; 
 then
     echo "$0: no se ingresó la ruta del directorio." >&2
     exit 1
-elif [[ "$PANTALLA" = false && -z "$ARCHIVO" ]]; 
+fi
+if [[ "$PANTALLA" = false && -z "$ARCHIVO" ]]; 
 then
     echo "$0: no se especificó archivo de salida ni pantalla." >&2
     exit 1
-elif [[ $PANTALLA = true && -n "$ARCHIVO" ]]
+fi
+if [[ $PANTALLA = true && -n "$ARCHIVO" ]]
 then
     echo "$0: argumentos conflictivos." >&2
     exit 1
 fi
 
-# Obtiene todos los archivos de encuesta que hay en el directorio
-ARCHIVOS=$(ls -A "$DIRECTORIO")
-ENCUESTAS="./temp/fechas.txt"
+# Se verifica que el directorio tenga archivos txt
+# Se desactiva nullglob para encontrar los archivos que tengan el patron que buscamos 
+shopt -s nullglob
+ARCHIVOS=("$DIRECTORIO"/*.txt)
+shopt -u nullglob
 
-
-# Se verifica que el directorio tenga archivos
-if [ "$(ls -A "$DIRECTORIO")" ]
+if [[ ${#ARCHIVOS[@]} -eq 0 ]] 
 then
-    mkdir "./temp"
-    touch $ENCUESTAS
-    for item in $ARCHIVOS
-    do
-        cat $DIRECTORIO"/"$item >> $ENCUESTAS
-        echo  >> $ENCUESTAS
-    done
-else
-    echo "$0: no hay archivos para procesar." >&2
+    echo "Directorio vacio. $DIRECTORIO"
     exit 1
 fi
 
+touch $ENCUESTAS
+for item in ${ARCHIVOS[@]}
+do
+    cat $item >> $ENCUESTAS
+    echo  >> $ENCUESTAS
+done
+
 sort -t'|' -k2,2 $ENCUESTAS -o $ENCUESTAS
 
-if [ $PANTALLA = true ]
+#LC_NUMERIC=C para convertir decimales con coma a decimales con punto
+output=$(
+  LC_NUMERIC=C awk -f ejercicio1.awk "$ENCUESTAS" | \
+  jq -R -s '
+  split("\n")[:-1] 
+  | map(split("\t"))
+  | reduce .[] as $row ({}; 
+      .[$row[0]] += { ($row[1]): {
+          tiempo_respuesta_promedio: ($row[2]|tonumber),
+          nota_satisfaccion_promedio: ($row[3]|tonumber)
+      }}
+  )'
+)
+
+if [ "$PANTALLA" = true ]
 then
-    LC_NUMERIC=C awk -f ejercicio1.awk "$ENCUESTAS" | \
-    jq -R -s '
-    split("\n")[:-1] 
-    | map(split("\t"))
-    | reduce .[] as $row ({}; 
-        .[$row[0]] += { ($row[1]): {
-            tiempo_respuesta_promedio: ($row[2]|tonumber),
-            nota_satisfaccion_promedio: ($row[3]|tonumber)
-        }}
-        )'
+    echo "$output"
 else
-    LC_NUMERIC=C awk -f ejercicio1.awk "$ENCUESTAS" | \
-    jq -R -s '
-    split("\n")[:-1] 
-    | map(split("\t"))
-    | reduce .[] as $row ({}; 
-        .[$row[0]] += { ($row[1]): {
-            tiempo_respuesta_promedio: ($row[2]|tonumber),
-            nota_satisfaccion_promedio: ($row[3]|tonumber)
-        }}
-        )' > $ARCHIVO
+    echo "$output" > "$ARCHIVO"
 fi
 
-rm -rf ./temp
+rm $ENCUESTAS
 
 exit 0
