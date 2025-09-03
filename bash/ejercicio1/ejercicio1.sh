@@ -12,7 +12,7 @@ Options:
 
   -h, --help                 Muestra este mensaje de ayuda
 EOF
-    exit 1
+    exit 0
 }
 
 
