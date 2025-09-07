@@ -54,12 +54,14 @@ for pais in "${PAISES[@]}"; do
         echo "Cargando información de caché para el país $pais"
 
         if [[ -z "$TTL" || $(find "$cache_file" -mmin +$TTL) ]]; then
-            echo "La caché ha expirado o no está disponible"
-            echo "Obteniendo información en tiempo real para el país $pais"
-            result=$(get_country_info "$pais")
-            status="${result%%|*}"
-            # echo "Código de estado: $status"
-            body="${result#*|}"
+            if [[ -z "$TTL" || $(( $(date +%s) - $(stat -c %Y "$cache_file") )) -gt $TTL ]]; then
+                echo "La caché ha expirado o no está disponible"
+                echo "Obteniendo información en tiempo real para el país $pais"
+                result=$(get_country_info "$pais")
+                status="${result%%|*}"
+                # echo "Código de estado: $status"
+                body="${result#*|}"
+            fi
         else
             body=$(<"$cache_file")
             status="200"
@@ -70,6 +72,7 @@ for pais in "${PAISES[@]}"; do
         status="${result%%|*}"
         # echo "Código de estado: $status"
         body="${result#*|}"
+        echo "$body" > "$cache_file"
     fi
 
     if [[ "$status" != "200" ]]; then
@@ -77,12 +80,12 @@ for pais in "${PAISES[@]}"; do
         continue
     fi
 
-    nombre=$(echo "$body" | jq -r '.[0].name.common')
-    capital=$(echo "$body" | jq -r '.[0].capital[0]')
-    region=$(echo "$body" | jq -r '.[0].region')
-    poblacion=$(echo "$body" | jq -r '.[0].population')
-    moneda_codigo=$(echo "$body" | jq -r '.[0].currencies | to_entries | map(.key) | .[]')
-    moneda_nombre=$(echo "$body" | jq -r '.[0].currencies | to_entries | map(.value.name) | .[]')
+    nombre=$(echo "$body" | grep -o '"common":"[^"]*"' | head -1 | awk -F':' '{print $2}' | tr -d '"')
+    capital=$(echo "$body" | grep -o '"capital":\["[^"]*"' | head -1 | awk -F'\\["' '{print $2}' | tr -d '"')
+    region=$(echo "$body" | grep -o '"region":"[^"]*"' | head -1 | awk -F':' '{print $2}' | tr -d '"')
+    poblacion=$(echo "$body" | grep -o '"population":[0-9]*' | head -1 | awk -F':' '{print $2}')
+    moneda_codigo=$(echo "$body" | grep -o '"currencies":{[^}]*}' | grep -o '"[A-Z][A-Z][A-Z]"' | head -1 | tr -d '"')
+    moneda_nombre=$(echo "$body" | grep -o '"name":"[^"]*"' | head -1 | awk -F':' '{print $2}' | tr -d '"')
 
     echo "País: $nombre"
     echo "Capital: $capital"
@@ -93,4 +96,4 @@ for pais in "${PAISES[@]}"; do
 
 done
 
-echo "Tiempo de caché: $TTL"
+# echo "Tiempo de caché: $TTL"
