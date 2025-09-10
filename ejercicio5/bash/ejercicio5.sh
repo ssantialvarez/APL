@@ -53,16 +53,29 @@ for pais in "${PAISES[@]}"; do
     if [[ -f "$cache_file" ]]; then
         echo "Cargando información de caché para el país $pais"
 
-        if [[ -z "$TTL" || $(find "$cache_file" -mmin +$TTL) ]]; then
-            if [[ -z "$TTL" || $(( $(date +%s) - $(stat -c %Y "$cache_file") )) -gt $TTL ]]; then
-                echo "La caché ha expirado o no está disponible"
+        # Si se proporcionó TTL lo interpretamos como segundos
+        if [[ -n "$TTL" ]]; then
+            # Obtener la última modificación del fichero en epoch (segundos)
+            # stat -c %Y funciona en GNU stat (WSL/Linux). Intentamos fallback a date -r si no está disponible.
+            file_mtime=$(stat -c %Y "$cache_file" 2>/dev/null || date -r "$cache_file" +%s 2>/dev/null || echo 0)
+            age=$(( $(date +%s) - file_mtime ))
+            if (( age > TTL )); then
+                echo "La caché ha expirado (edad ${age}s > ${TTL}s)"
                 echo "Obteniendo información en tiempo real para el país $pais"
                 result=$(get_country_info "$pais")
                 status="${result%%|*}"
-                # echo "Código de estado: $status"
                 body="${result#*|}"
+                # Solo sobrescribimos la caché si la consulta fue correcta
+                if [[ "$status" == "200" ]]; then
+                    echo "$body" > "$cache_file"
+                fi
+            else
+                # Caché aún válida
+                body=$(<"$cache_file")
+                status="200"
             fi
         else
+            # Sin TTL: usamos siempre la caché existente
             body=$(<"$cache_file")
             status="200"
         fi
@@ -70,9 +83,10 @@ for pais in "${PAISES[@]}"; do
         echo "Obteniendo información en tiempo real para el país $pais"
         result=$(get_country_info "$pais")
         status="${result%%|*}"
-        # echo "Código de estado: $status"
         body="${result#*|}"
-        echo "$body" > "$cache_file"
+        if [[ "$status" == "200" ]]; then
+            echo "$body" > "$cache_file"
+        fi
     fi
 
     if [[ "$status" != "200" ]]; then
