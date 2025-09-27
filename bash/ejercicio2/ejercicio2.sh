@@ -162,67 +162,69 @@ fi
 
 # Lógica para encontrar el camino más corto usando Dijkstra
 if [ -n "$CAMINO" ]; then
+    # Floyd-Warshall
+    infinito=999999
+    declare -a dist
+    declare -a next
+    # Inicializar distancias y matriz de "next" para reconstrucción de caminos
+    for ((i=0; i<num_filas; i++)); do
+        for ((j=0; j<num_columnas; j++)); do
+            idx=$((i*num_columnas+j))
+            if [ $i -eq $j ]; then
+                dist[$idx]=0
+                next[$idx]=-1
+            elif (( $(echo "${matriz[$idx]} > 0" | bc -l) )); then
+                dist[$idx]=${matriz[$idx]}
+                next[$idx]=$j
+            else
+                dist[$idx]=$infinito
+                next[$idx]=-1
+            fi
+        done
+    done
+
+    # Algoritmo principal
+    for ((k=0; k<num_filas; k++)); do
+        for ((i=0; i<num_filas; i++)); do
+            for ((j=0; j<num_filas; j++)); do
+                idx_ij=$((i*num_columnas+j))
+                idx_ik=$((i*num_columnas+k))
+                idx_kj=$((k*num_columnas+j))
+                suma=$(echo "${dist[$idx_ik]} + ${dist[$idx_kj]}" | bc -l)
+                if (( $(echo "$suma < ${dist[$idx_ij]}" | bc -l) )); then
+                    dist[$idx_ij]=$suma
+                    next[$idx_ij]=${next[$idx_ik]}
+                fi
+            done
+        done
+    done
+
+    # Reconstruir el camino más corto entre estación 1 y estación N
     origen=0
     destino=$((num_filas-1))
-    declare -a dist
-    declare -a prev
-    declare -a visitado
-    infinito=999999
-
-    # Inicializar distancias y predecesores
-    for ((i=0; i<num_filas; i++)); do
-        dist[$i]=$infinito
-        prev[$i]=-1
-        visitado[$i]=0
-    done
-    dist[$origen]=0
-
-    # Dijkstra
-    for ((c=0; c<num_filas; c++)); do
-        # Buscar el nodo no visitado con menor distancia
-        min=$infinito
-        u=-1
-        for ((i=0; i<num_filas; i++)); do
-            if [ ${visitado[$i]} -eq 0 ] && (( $(echo "${dist[$i]} < $min" | bc -l) )); then
-                min=${dist[$i]}
-                u=$i
-            fi
-        done
-        # Si no hay más alcanzables, salir
-        if [ $u -eq -1 ]; then
-            break
-        fi
-        visitado[$u]=1
-        # Relajar vecinos
-        for ((v=0; v<num_filas; v++)); do
-            idx=$((u*num_columnas+v))
-            peso=${matriz[$idx]}
-            if [ $u -ne $v ] && (( $(echo "$peso > 0" | bc -l) )) && [ ${visitado[$v]} -eq 0 ]; then
-                nueva_dist=$(echo "${dist[$u]} + $peso" | bc -l)
-                if (( $(echo "$nueva_dist < ${dist[$v]}" | bc -l) )); then
-                    dist[$v]=$nueva_dist
-                    prev[$v]=$u
-                fi
-            fi
-        done
-    done
-
-    # Reconstruir el camino más corto
-    ruta=()
-    actual=$destino
-    while [ $actual -ne -1 ]; do
-        ruta=($((actual+1)) "${ruta[@]}")
-        actual=${prev[$actual]}
-    done
-
-    if [ "${dist[$destino]}" == "$infinito" ]; then
+    idx_od=$((origen*num_columnas+destino))
+    if [ "${dist[$idx_od]}" == "$infinito" ]; then
         echo "No hay camino entre Estación 1 y Estación $((destino+1))"
         exit 1
     fi
 
+    # Construir la ruta
+    ruta=()
+    u=$origen
+    while [ $u -ne $destino ]; do
+        ruta+=( $((u+1)) )
+        idx=$((u*num_columnas+destino))
+        u=${next[$idx]}
+        if [ $u -eq -1 ]; then
+            echo "No hay camino entre Estación 1 y Estación $((destino+1))"
+            exit 1
+        fi
+    done
+    ruta+=( $((destino+1)) )
+
     # Mostrar resultado
     echo "**Camino más corto: entre Estación 1 y Estación $((destino+1))**"
-    echo "**Tiempo total:** ${dist[$destino]} minutos"
+    echo "**Tiempo total:** ${dist[$idx_od]} minutos"
     echo -n "**Ruta:** "
     for ((i=0; i<${#ruta[@]}; i++)); do
         if [ $i -gt 0 ]; then echo -n " -> "; fi
