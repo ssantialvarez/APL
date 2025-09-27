@@ -145,7 +145,7 @@ do
         NOTA_PROMEDIO=$(echo "scale = 3; $NOTA_PROMEDIO / $CONTADOR" | bc -l)
         
 
-        # Formatear el canal en JSON
+       
         CANAL_JSON=$(jq -n \
             --arg tiempo "$TIEMPO_PROMEDIO" \
             --arg nota "$NOTA_PROMEDIO" \
@@ -154,7 +154,7 @@ do
                 "nota_satisfaccion_promedio": ($nota | tonumber)
             }')
 
-        # Agregar el canal al JSON de la fecha correspondiente
+        
         JSON_OUTPUT=$(echo "$JSON_OUTPUT" | jq \
             --arg fecha "$FECHA" \
             --arg canal "$CANAL" \
