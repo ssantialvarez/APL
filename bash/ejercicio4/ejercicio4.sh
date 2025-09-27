@@ -2,11 +2,11 @@
 
 function help() {
     cat << EOF
-Usage: $0 [-r|--repo REPO] [-c|--configuracion CONF] [-l|--log LOG] [-k|--kill KILL]
+Usage: $0 [-r|--repo REPO] [-c|--configuracion CONFIG] [-l|--log LOG] [-k|--kill KILL]
 
 Options:
   -r, --repo REPO            Ruta del repositorio Git a monitorear.
-  -c, --configuracion CONF   Ruta del archivo de configuración que contiene la lista de patrones a buscar.
+  -c, --configuracion CONFIG   Ruta del archivo de configuración que contiene la lista de patrones a buscar.
   -l, --log LOG              Ruta del archivo de logs que contiene la lista de eventos identificados.
   -k, --kill KILL            Flag para detener el demonio. Solo se usa junto con -r / -repo y debe validar que exista un demonio en ejecución.
 
@@ -26,12 +26,32 @@ me_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 me_FILE=$(basename $0)
 cd /
 
+declare -a REGEX
+REGEX=()
 REPO=""
 CONFIG=""
 KILL=false
 LOG=""
 
+#### CHILD HERE --------------------------------------------------------------------->
+if [ "$1" = "child" ] ; then   # 2. We are the child. We need to fork again.
+    shift; tty="$1"; shift
+    umask 0
+    $me_DIR/$me_FILE XXrefork_daemonXX "$tty" "$@" </dev/null >/dev/null 2>/dev/null &
+    exit 0
+fi
 
+##### ENTRY POINT HERE -------------------------------------------------------------->
+if [ "$1" != "XXrefork_daemonXX" ] ; then # 1. This is where the original call starts.
+    tty=$(tty)
+    setsid $me_DIR/$me_FILE child "$tty" "$@" &
+    exit 0
+fi
+
+##### RUNS AFTER CHILD FORKS (actually, on Linux, clone()s. See strace -------------->
+                               # 3. We have been reforked. Go to work.
+exec 0</dev/null
+shift; tty="$1"; shift
 options=$(getopt -o r:c:l:kh --l repo:,configuracion:,kill:,log,help -- "$@" 2> /dev/null)
 if [ "$?" != "0" ]
 then
@@ -100,4 +120,25 @@ then
 else 
     echo "SE ELIMINA DEMONIO"
 fi
-exit
+
+if [[ "$CONFIG" =~ ^. ]]; then
+    CONFIG="$me_DIR/$CONFIG"
+fi
+
+mapfile -t REGEX < <(cat $CONFIG)
+
+if [ ${#REGEX[@]} -eq 0 ]
+then
+    echo "ARCHIVO CONFIG VACIO" >$tty
+    exit 1
+fi
+
+#exec >/tmp/outfile
+#exec 2>/tmp/errfile
+
+
+echo "Se creo el daemon correctamente." >$tty
+echo "esto tendria que leer el repo en busqueda de cambios." >$tty
+
+
+exit 
