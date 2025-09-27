@@ -59,7 +59,7 @@ do
             break
             ;;
         *) # default: 
-            "$0: opcion no reconocida: $1" >&2
+            echo "$0: opcion no reconocida: $1" >&2
             
             exit 1
             ;;
