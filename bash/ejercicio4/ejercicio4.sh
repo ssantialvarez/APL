@@ -117,6 +117,13 @@ if [ "$1" != "XXrefork_daemonXX" ] ; then # 1. This is where the original call s
     fi
 
     #### PROCESAMIENTO DE REPOSITORIO
+    #### VERIFICA QUE EL REPOSITORIO TENGA .git
+    if [ ! -d "$REPO/.git" ]; then
+        echo "$0: El repositorio '$REPO/.git' no existe."
+        exit 1
+    fi
+
+
     #### SE GENERA HASH CON EL REPOSITORIO
     REPO_HASH=$(echo "$REPO" | sha1sum | cut -d' ' -f1)
     PIDFILE="/tmp/audit_${REPO_HASH}.pid"
@@ -135,12 +142,12 @@ if [ "$1" != "XXrefork_daemonXX" ] ; then # 1. This is where the original call s
         else
             echo "$0: El repositorio no tiene un daemon activo asociado."
         fi
-        exit
+        exit 1
     fi
     if kill -0 "$PID" 2>/dev/null;
     then
         echo "$0: El repositorio ya tiene un daemon activo asociado."
-        exit
+        exit 1
     fi
 
     #### PROCESAMIENTO DE ARCHIVO .log
