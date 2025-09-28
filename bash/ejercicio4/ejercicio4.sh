@@ -89,35 +89,21 @@ function procesamiento_parametros() {
 function procesamiento_archivos(){
     #### PROCESAMIENTO DE REPOSITORIO
     #### VERIFICA QUE EL REPOSITORIO TENGA .git
-    if [ ! -d "$REPO/.git" ]; then
-        echo "$0: El repositorio '$REPO/.git' no existe."
+    if [[ "$REPO" == .* ]]; then
+        REPO="$me_DIR/$REPO"
+    fi
+    find "$REPO" -name ".git"
+    FLAG=$(echo "$?")
+    if [ $FLAG -eq 1 ]; then
+        echo "$0: El directorio '$REPO' no tiene un repositorio git válido."
         exit 1
     fi
+
     #### SE GENERA HASH CON EL REPOSITORIO
     REPO_HASH=$(echo "$REPO" | sha1sum | cut -d' ' -f1)
     PIDFILE="/tmp/audit_${REPO_HASH}.pid"
     #### SE OBTIENE PID (SI ES QUE HAY)
     PID=$(cat "$PIDFILE" 2>/dev/null;)
-
-    if [[ "$KILL" == true ]]
-    then
-        if kill -0 "$PID" 2>/dev/null;
-        then
-            echo "$PID"
-            kill $PID
-            echo "$0: El daemon de $REPO se detuvo correctamente."
-            exit 1
-        else
-            echo "$0: El repositorio no tiene un daemon activo asociado."
-        fi
-        rm $PIDFILE 2>/dev/null;
-        exit 1
-    fi
-    if kill -0 "$PID" 2>/dev/null;
-    then
-        echo "$0: El repositorio ya tiene un daemon activo asociado."
-        exit 1650883
-    fi
 
     #### PROCESAMIENTO DE ARCHIVO .log
     if [[ "$LOG" == .* ]]; then
@@ -181,16 +167,19 @@ function scan_file() {
         if [[ "$pattern" == regex:* ]]; then
             regex="${pattern#regex:}"
             if grep -Eq "$regex" "$file"; then
-                echo "[$(date '+%F %T')] ALERTA: patrón '$regex' en $file" >> "$LOG"
+                echo "[$(date '+%F %T')] ALERTA: patrón '$regex' en $file"
             fi
         else
             if grep -q "$pattern" "$file"; then
-                echo "[$(date '+%F %T')] ALERTA: patrón '$pattern' en $file" >> "$LOG"
+                echo "[$(date '+%F %T')] ALERTA: patrón '$pattern' en $file"
             fi
         fi
     done < "$CONFIG"
 }
+
+trap process_USR1 SIGTERM
 function process_USR1() {
+    kill 0
     exit 0
 }
 
@@ -204,7 +193,6 @@ CONFIG=""
 KILL=false
 LOG=""
 tty=""
-trap process_USR1 SIGTERM
 
 cd /
 
@@ -212,7 +200,6 @@ cd /
 if [ "$1" = "child" ] ; then   # 2. Proceso hijo, tiene que volver a hacer fork.
     shift; tty="$1"; shift
     umask 0
-    echo "CHILD OUT" >$tty
     $me_DIR/$me_FILE XXrefork_daemonXX "$tty" "$@" </dev/null >/dev/null 2>/dev/null &
     exit 0
 fi
@@ -222,14 +209,31 @@ if [ "$1" != "XXrefork_daemonXX" ] ; then # 1. Proceso padre.
     procesamiento_parametros "$@"
 
     procesamiento_archivos
+
+    if [[ "$KILL" == true ]]
+    then
+        if kill -0 "$PID" 2>/dev/null;
+        then
+            kill $PID
+            echo "$0: El daemon de $REPO se detuvo correctamente."
+        else
+            echo "$0: El repositorio no tiene un daemon activo asociado."
+        fi
+        rm $PIDFILE 2>/dev/null;
+        exit 1
+    fi
+    if kill -0 "$PID" 2>/dev/null;
+    then
+        echo "$0: El repositorio ya tiene un daemon activo asociado."
+        exit 1
+    fi
     
     tty=$(tty)
-    echo "PARENT OUT" >$tty
     setsid $me_DIR/$me_FILE child "$tty" "$REPO" "$CONFIG" "$LOG" "$REPO_HASH" "$PIDFILE" &
     exit 0
 fi
 
-##### RUNS AFTER CHILD FORKS (actually, on Linux, clone()s. See strace -------------->
+##### RUNS AFTER CHILD FORKS 
                                # 3. Proceso del nieto/demonio.
 
 shift; tty="$1"; shift
@@ -241,19 +245,13 @@ LOG="$3"
 REPO_HASH="$4"
 PIDFILE="$5"
 
-echo "Se creo el daemon correctamente." >$tty
-echo "esto tendria que leer el repo en busqueda de cambios." >$tty
 echo $$ > $PIDFILE
-echo "PIDFILE: $PIDFILE" >$tty
-echo NOT A REAL DAEMON. NOT RUNNING WHILE LOOP. >$tty
 
 verifica_paquete
-echo "$REPO " >$tty
 #### LOOP PRINCIPAL
 inotifywait -m -r -e close_write,create,delete "$REPO" | while read dir event file; do
     full_path="$dir$file"
-    echo "CAMBIOS EN REPO" >$tty
     scan_file "$full_path"
-done
+done &
 
-exit 
+wait
