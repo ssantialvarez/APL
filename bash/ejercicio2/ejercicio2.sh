@@ -25,10 +25,8 @@ SEPARADOR=""
 
 
 
-# Parseo de argumentos
-options=$(getopt -o m:h:cs: --l help,matriz:,hub:,camino,separador: -- "$@" 2> /dev/null)
-if [ "$?" != "0" ]
-then
+options=$(getopt -o m:hcs: --long help,matriz:,hub,camino,separador: -- "$@" 2> /dev/null)
+if [ $? -ne 0 ]; then
     echo "$0: error en los argumentos." >&2
     exit 1
 fi
@@ -42,11 +40,11 @@ while true; do
             ;;
         -h|--hub)
             HUB=1
-            shift 1
+            shift
             ;;
         -c|--camino)
             CAMINO=1
-            shift 1
+            shift
             ;;
         -s|--separador)
             SEPARADOR="$2"
@@ -134,10 +132,10 @@ for ((i=0; i<num_filas; i++)); do
     done
 done
 
-# Si llegamos aquí, la matriz es válida
-echo "Matriz válida: $num_filas x $num_columnas"
+# echo "Matriz válida: $num_filas x $num_columnas"
+echo "## Informe de análisis de red de transporte"
 
-# Lógica para encontrar el hub
+# Ajustar la lógica para el cálculo del hub
 if [ -n "$HUB" ]; then
     max_conexiones=0
     hub_estacion=0
@@ -155,12 +153,10 @@ if [ -n "$HUB" ]; then
             hub_estacion=$((i+1))
         fi
     done
-    echo "**Hub de la red:** Estación $hub_estacion ($max_conexiones conexiones)"
-    # Aquí se puede guardar el resultado en el informe
+    echo "**Hub de la red:** Estación $hub_estacion ($max_conexiones conexiones directas)"
     exit 0
 fi
 
-# Lógica para encontrar el camino más corto usando Dijkstra
 if [ -n "$CAMINO" ]; then
     # Floyd-Warshall
     infinito=999999
@@ -199,37 +195,47 @@ if [ -n "$CAMINO" ]; then
         done
     done
 
-    # Reconstruir el camino más corto entre estación 1 y estación N
-    origen=0
-    destino=$((num_filas-1))
-    idx_od=$((origen*num_columnas+destino))
-    if [ "${dist[$idx_od]}" == "$infinito" ]; then
-        echo "No hay camino entre Estación 1 y Estación $((destino+1))"
-        exit 1
-    fi
-
-    # Construir la ruta
-    ruta=()
-    u=$origen
-    while [ $u -ne $destino ]; do
-        ruta+=( $((u+1)) )
-        idx=$((u*num_columnas+destino))
-        u=${next[$idx]}
-        if [ $u -eq -1 ]; then
-            echo "No hay camino entre Estación 1 y Estación $((destino+1))"
-            exit 1
-        fi
+    # Encontrar el tiempo mínimo entre todas las estaciones
+    tiempo_minimo=$infinito
+    for ((i=0; i<num_filas; i++)); do
+        for ((j=i+1; j<num_filas; j++)); do  # Evitar caminos repetidos
+            idx=$((i*num_columnas+j))
+            if (( $(echo "${dist[$idx]} < $tiempo_minimo" | bc -l) )); then
+                tiempo_minimo=${dist[$idx]}
+            fi
+        done
     done
-    ruta+=( $((destino+1)) )
 
-    # Mostrar resultado
-    echo "**Camino más corto: entre Estación 1 y Estación $((destino+1))**"
-    echo "**Tiempo total:** ${dist[$idx_od]} minutos"
-    echo -n "**Ruta:** "
-    for ((i=0; i<${#ruta[@]}; i++)); do
-        if [ $i -gt 0 ]; then echo -n " -> "; fi
-        echo -n "${ruta[$i]}"
+    # Mostrar los caminos con el tiempo mínimo
+    for ((origen=0; origen<num_filas; origen++)); do
+        for ((destino=origen+1; destino<num_filas; destino++)); do  # Evitar caminos repetidos
+            idx_od=$((origen*num_columnas+destino))
+            if (( $(echo "${dist[$idx_od]} == $tiempo_minimo" | bc -l) )); then
+                # Construir la ruta
+                ruta=()
+                u=$origen
+                while [ $u -ne $destino ]; do
+                    ruta+=( $((u+1)) )
+                    idx=$((u*num_columnas+destino))
+                    u=${next[$idx]}
+                    if [ $u -eq -1 ]; then
+                        echo "No hay camino entre Estación $((origen+1)) y Estación $((destino+1))"
+                        break
+                    fi
+                done
+                ruta+=( $((destino+1)) )
+
+                # Mostrar resultado
+                echo "**Camino más corto: Entre Estación $((origen+1)) y Estación $((destino+1))**"
+                echo "**Tiempo total:** ${dist[$idx_od]} minutos"
+                echo -n "**Ruta:** "
+                for ((i=0; i<${#ruta[@]}; i++)); do
+                    if [ $i -gt 0 ]; then echo -n " -> "; fi
+                    echo -n "${ruta[$i]}"
+                done
+                echo
+            fi
+        done
     done
-    echo
     exit 0
 fi
