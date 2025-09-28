@@ -16,38 +16,7 @@ EOF
     exit 0
 }
 
-
-
-function process_USR1() {
-    echo "$0: El daemon se detuvo correctamente." >$tty
-    exit 0
-}
-
-#### VARIABLES
-me_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-me_FILE=$(basename $0)
-declare -a REGEX
-REGEX=()
-REPO=""
-CONFIG=""
-KILL=false
-LOG=""
-tty=""
-trap 'process_USR1 "$tty"' SIGTERM
-
-cd /
-
-
-#### CHILD HERE --------------------------------------------------------------------->
-if [ "$1" = "child" ] ; then   # 2. We are the child. We need to fork again.
-    shift; tty="$1"; shift
-    umask 0
-    $me_DIR/$me_FILE XXrefork_daemonXX "$tty" "$@" </dev/null >/dev/null 2>/dev/null &
-    exit 0
-fi
-
-##### ENTRY POINT HERE -------------------------------------------------------------->
-if [ "$1" != "XXrefork_daemonXX" ] ; then # 1. This is where the original call starts.
+function procesamiento_parametros() {
     #### PROCESAMIENTO DE PARAMETROS
     options=$(getopt -o r:c:l:kh --l repo:,configuracion:,kill:,log,help -- "$@" 2> /dev/null)
     if [ "$?" != "0" ]
@@ -115,48 +84,52 @@ if [ "$1" != "XXrefork_daemonXX" ] ; then # 1. This is where the original call s
             exit 1
         fi
     fi
+}
 
+function procesamiento_archivos(){
     #### PROCESAMIENTO DE REPOSITORIO
     #### VERIFICA QUE EL REPOSITORIO TENGA .git
     if [ ! -d "$REPO/.git" ]; then
         echo "$0: El repositorio '$REPO/.git' no existe."
         exit 1
     fi
-
-
     #### SE GENERA HASH CON EL REPOSITORIO
     REPO_HASH=$(echo "$REPO" | sha1sum | cut -d' ' -f1)
     PIDFILE="/tmp/audit_${REPO_HASH}.pid"
     #### SE OBTIENE PID (SI ES QUE HAY)
     PID=$(cat "$PIDFILE" 2>/dev/null;)
-    #### VERIFICAR QUE HAYA UN ARCHIVO .pid CON EL REPO
-    FLAG=$( [ -f "$PIDFILE" ] && echo "true" || echo "false" )
 
     if [[ "$KILL" == true ]]
     then
-        rm $PIDFILE 2>/dev/null;
         if kill -0 "$PID" 2>/dev/null;
         then
+            echo "$PID"
             kill $PID
-            echo "$0: El daemon $PID se detuvo."
+            echo "$0: El daemon de $REPO se detuvo correctamente."
+            exit 1
         else
             echo "$0: El repositorio no tiene un daemon activo asociado."
         fi
+        rm $PIDFILE 2>/dev/null;
         exit 1
     fi
     if kill -0 "$PID" 2>/dev/null;
     then
         echo "$0: El repositorio ya tiene un daemon activo asociado."
-        exit 1
+        exit 1650883
     fi
 
     #### PROCESAMIENTO DE ARCHIVO .log
-    if [[ "$LOG" =~ ^. ]]; then
+    if [[ "$LOG" == .* ]]; then
         LOG="$me_DIR/$LOG"
     fi
 
+    if ! find "$LOG" >/dev/null 2>&1; then
+        touch $LOG
+    fi
+
     #### PROCESAMIENTO DE ARCHIVO .conf
-    if [[ "$CONFIG" =~ ^. ]]; then
+    if [[ "$CONFIG" == .* ]]; then
         CONFIG="$me_DIR/$CONFIG"
     fi
 
@@ -164,38 +137,123 @@ if [ "$1" != "XXrefork_daemonXX" ] ; then # 1. This is where the original call s
 
     if [ ${#REGEX[@]} -eq 0 ]
     then
-        echo "ARCHIVO CONFIG VACIO" >$tty
+        echo "ARCHIVO CONFIG VACIO" 
         exit 1
     fi
+}
 
+function verifica_paquete(){
+    if ! command -v inotifywait >/dev/null 2>&1; then
+        echo "$0: El comando 'inotifywait' no está disponible."
+        echo "$0: Se necesita el paquete 'inotify-tools' para monitorear cambios en el directorio."
+        flag=1
+        while [ $flag -eq 1 ]
+        do
+            echo -n "$0: ¿Desea instalarlo ahora? [Y/n]: "
+            read -r respuesta
+
+            case "$respuesta" in
+                [Yy]* | "" )
+                    echo "$0: Instalando inotify-tools..."
+                    sudo apt update && sudo apt install inotify-tools -y
+                    flag=$(echo $?)
+                    ;;
+                [Nn]* )
+                    echo "$0: No se instalará 'inotify-tools'."
+                    echo "$0: El script no podrá usar monitoreo en tiempo real."
+                    echo "$0: Saliendo..."
+                    exit 1
+                    ;;
+                * )
+                    echo "$0: Respuesta no válida. Use Y o n."
+                    
+                    ;;
+            esac
+        done
+    fi
+}
+
+function scan_file() {
+    local file="$1"
+    [ -f "$file" ] || return
+    while read pattern; do
+        [ -z "$pattern" ] && continue
+        if [[ "$pattern" == regex:* ]]; then
+            regex="${pattern#regex:}"
+            if grep -Eq "$regex" "$file"; then
+                echo "[$(date '+%F %T')] ALERTA: patrón '$regex' en $file" >> "$LOG"
+            fi
+        else
+            if grep -q "$pattern" "$file"; then
+                echo "[$(date '+%F %T')] ALERTA: patrón '$pattern' en $file" >> "$LOG"
+            fi
+        fi
+    done < "$CONFIG"
+}
+function process_USR1() {
+    exit 0
+}
+
+#### VARIABLES
+me_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+me_FILE=$(basename $0)
+declare -a REGEX
+REGEX=()
+REPO=""
+CONFIG=""
+KILL=false
+LOG=""
+tty=""
+trap process_USR1 SIGTERM
+
+cd /
+
+#### CHILD HERE --------------------------------------------------------------------->
+if [ "$1" = "child" ] ; then   # 2. Proceso hijo, tiene que volver a hacer fork.
+    shift; tty="$1"; shift
+    umask 0
+    echo "CHILD OUT" >$tty
+    $me_DIR/$me_FILE XXrefork_daemonXX "$tty" "$@" </dev/null >/dev/null 2>/dev/null &
+    exit 0
+fi
+
+##### ENTRY POINT HERE -------------------------------------------------------------->
+if [ "$1" != "XXrefork_daemonXX" ] ; then # 1. Proceso padre.
+    procesamiento_parametros "$@"
+
+    procesamiento_archivos
     
     tty=$(tty)
+    echo "PARENT OUT" >$tty
     setsid $me_DIR/$me_FILE child "$tty" "$REPO" "$CONFIG" "$LOG" "$REPO_HASH" "$PIDFILE" &
     exit 0
 fi
 
 ##### RUNS AFTER CHILD FORKS (actually, on Linux, clone()s. See strace -------------->
-                               # 3. We have been reforked. Go to work.
+                               # 3. Proceso del nieto/demonio.
 
 shift; tty="$1"; shift
 exec >"$3"
 exec 0</dev/null
+REPO="$1"
+CONFIG="$2"
+LOG="$3"
+REPO_HASH="$4"
 PIDFILE="$5"
-
-#exec 2>/tmp/errfile
-
 
 echo "Se creo el daemon correctamente." >$tty
 echo "esto tendria que leer el repo en busqueda de cambios." >$tty
 echo $$ > $PIDFILE
-#echo "$PIDFILE" >$tty
+echo "PIDFILE: $PIDFILE" >$tty
+echo NOT A REAL DAEMON. NOT RUNNING WHILE LOOP. >$tty
 
-while true; do
-    echo "Change this loop, so this silly no-op goes away." 
-    echo "Do something useful with your life, young padawan." 
-    sleep 20
+verifica_paquete
+echo "$REPO " >$tty
+#### LOOP PRINCIPAL
+inotifywait -m -r -e close_write,create,delete "$REPO" | while read dir event file; do
+    full_path="$dir$file"
+    echo "CAMBIOS EN REPO" >$tty
+    scan_file "$full_path"
 done
-
-
 
 exit 
