@@ -51,13 +51,15 @@ if ($Hub -and $Camino) {
     exit 1
 }
 
+if (-not $Hub -and -not $Camino) {
+    Write-Error 'Debe especificar al menos uno de los parámetros: -Hub o -Camino.'
+    exit 1
+}
+
 # Convertir la ruta a absoluta si es relativa
 if (-not (Test-Path -Path $Matriz)) {
     $Matriz = Join-Path -Path (Get-Location) -ChildPath $Matriz
 }
-
-# Imprimir la ruta calculada para depuración
-Write-Output "## Informe de análisis de red de transporte "
 
 try {
     if (-not (Test-Path -Path $Matriz -PathType Leaf)) {
@@ -79,32 +81,28 @@ else {
     exit 1
 }
 
-# Leer la matriz
-$matriz = @()
+Write-Output "## Informe de análisis de red de transporte "
+
+$matrizProcesada = @()
 foreach ($linea in $lineas) {
     $linea = $linea -replace '\s', ''
     $valores = $linea -split [regex]::Escape($Separador)
-    foreach ($valor in $valores) {
-        if (-not ($valor -match '^[0-9.]+$')) {
-            Write-Error "Valor no numérico en la matriz: $valor"
-            exit 1
-        }
+    if ($valores.Count -ne $lineas.Count) {
+        Write-Error "La matriz no es cuadrada. Número de valores en la fila: $($valores.Count), Número de filas: $($lineas.Count)"
+        exit 1
     }
-    $matriz += , @($valores)
+    $matrizProcesada += ,@($valores | ForEach-Object { [double]$_ })
 }
 
-$numFilas = $matriz.Count
-$numColumnas = $matriz[0].Count
+$numFilas = $matrizProcesada.Count
+$numColumnas = $matrizProcesada[0].Count
 
-if ($numFilas -ne $numColumnas) {
-    Write-Error "La matriz no es cuadrada ($numFilas x $numColumnas)"
-    exit 1
-}
+Write-Output "Número de filas: $numFilas, Número de columnas: $numColumnas"
 
 # Validar simetría
 for ($i = 0; $i -lt $numFilas; $i++) {
     for ($j = 0; $j -lt $numColumnas; $j++) {
-        if ($matriz[$i][$j] -ne $matriz[$j][$i]) {
+        if ($matrizProcesada[$i][$j] -ne $matrizProcesada[$j][$i]) {
             Write-Error "La matriz no es simétrica en ($i,$j) y ($j,$i)"
             exit 1
         }
@@ -117,7 +115,7 @@ if ($hub) {
     for ($i = 0; $i -lt $numFilas; $i++) {
         $conexiones = 0
         for ($j = 0; $j -lt $numColumnas; $j++) {
-            if ($i -ne $j -and [double]$matriz[$i][$j] -gt 0) {
+            if ($i -ne $j -and [double]$matrizProcesada[$i][$j] -gt 0) {
                 $conexiones++
             }
         }
@@ -136,8 +134,8 @@ if ($camino) {
     $next = @()
 
     for ($i = 0; $i -lt $numFilas; $i++) {
-        $dist += , @(0..($numColumnas - 1) | ForEach-Object { if ($_ -eq $i) { 0 } elseif ([double]$matriz[$i][$_] -gt 0) { [double]$matriz[$i][$_] } else { $infinito } })
-        $next += , @(0..($numColumnas - 1) | ForEach-Object { if ($_ -eq $i) { -1 } elseif ([double]$matriz[$i][$_] -gt 0) { $_ } else { -1 } })
+        $dist += , @(0..($numColumnas - 1) | ForEach-Object { if ($_ -eq $i) { 0 } elseif ([double]$matrizProcesada[$i][$_] -gt 0) { [double]$matrizProcesada[$i][$_] } else { $infinito } })
+        $next += , @(0..($numColumnas - 1) | ForEach-Object { if ($_ -eq $i) { -1 } elseif ([double]$matrizProcesada[$i][$_] -gt 0) { $_ } else { -1 } })
     }
 
     for ($k = 0; $k -lt $numFilas; $k++) {
