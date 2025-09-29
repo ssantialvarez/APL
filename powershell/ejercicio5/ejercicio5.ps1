@@ -1,13 +1,32 @@
-﻿param(
+﻿<#
+.SYNOPSIS
+    Consulta información de países utilizando la API de REST Countries.
+
+.DESCRIPTION
+    Este script permite buscar información de países por nombre utilizando la API pública de REST Countries.
+    Los resultados se almacenan en un archivo de caché con un TTL (time to live) configurable para evitar consultas repetidas.
+
+.PARAMETER nombre
+    Nombre o nombres de los países a buscar, separados por comas.
+
+.PARAMETER ttl
+    Tiempo en segundos durante el cual los resultados en caché son válidos.
+
+.EXAMPLE
+    .\ejercicio5.ps1 -nombre "argentina,chile" -ttl 60
+    Consulta información de los países "argentina" y "chile" con un TTL de 60 segundos para la caché.
+#>
+
+param(
     [Parameter(Mandatory = $true, Position = 0)]
-    [string]$n,
+    [string]$nombre,
     [Parameter(Mandatory = $true, Position = 1)]
-    [int]$t
+    [int]$ttl
 )
 
 $ErrorActionPreference = "Stop"
-$NOMBRES = $n -split ","
-$TTL = $t
+$NOMBRES = $nombre -split ","
+$TTL = $ttl
 $cacheDir = "cache"
 if (-not (Test-Path $cacheDir)) { New-Item -ItemType Directory -Path $cacheDir | Out-Null }
 

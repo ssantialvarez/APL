@@ -1,69 +1,53 @@
-﻿function Show-Help {
-    @"
-Usage: .\ejercicio2.ps1 -Matriz <Ruta> [-Hub] [-Camino] [-Separador <Carácter>]
+﻿<#
+.SYNOPSIS
+Script para analizar rutas en una red de transporte público.
 
-Options:
-  -Matriz       Ruta del archivo de la matriz de adyacencia.
-  -Hub          Determina qué estación es el "hub" (estación con más conexiones) de la red. No se puede usar junto con -Camino.
-  -Camino       Encuentra el camino más corto en tiempo. No se puede usar junto a -Hub.
-  -Separador    Carácter para utilizarse como separador de columnas (por defecto '|').
-  -Help         Muestra este mensaje de ayuda.
-"@
-}
+.DESCRIPTION
+Este script analiza una matriz de adyacencia que representa una red de transporte público.
+Permite determinar el "hub" de la red o encontrar el camino más corto en tiempo entre estaciones.
 
-# Validar argumentos manualmente
-if ($args.Length -eq 0 -or $args -contains '-Help') {
-    Show-Help
-    exit 0
-}
+.PARAMETER matriz
+Ruta del archivo de la matriz de adyacencia.
 
-# Inicializar variables
-$Matriz = $null
-$Hub = $false
-$Camino = $false
-$Separador = '|'
+.PARAMETER hub
+Determina qué estación es el "hub" (estación con más conexiones) de la red.
+No se puede usar junto con -camino.
 
-# Procesar argumentos
-for ($i = 0; $i -lt $args.Length; $i++) {
-    switch ($args[$i]) {
-        '--Matriz' {
-            $Matriz = $args[$i + 1]
-            $i++
-        }
-        '-m' {
-            $Matriz = $args[$i + 1]
-            $i++
-        }
-        '--Hub' {
-            $Hub = $true
-        }
-        '-h' {
-            $Hub = $true
-        }
-        '--Camino' {
-            $Camino = $true
-        }
-        '-c' {
-            $Camino = $true
-        }
-        '--Separador' {
-            $Separador = $args[$i + 1]
-            $i++
-        }
-        '-s' {
-            $Separador = $args[$i + 1]
-            $i++
-        }
-        default {
-            Write-Error "Argumento no reconocido: $($args[$i])"
-            exit 1
-        }
-    }
-}
+.PARAMETER camino
+Encuentra el camino más corto en tiempo. No se puede usar junto a -hub.
 
-# Validar que la variable $Matriz no esté vacía
-if (-not $Matriz) {
-    Write-Error "Debe especificar un archivo válido para la matriz con -Matriz"
+.PARAMETER separador
+Carácter para utilizarse como separador de columnas (por defecto '|').
+
+.EXAMPLE
+.
+\ejercicio2.ps1 -matriz "mapa1.txt" -hub
+Determina el "hub" de la red basado en la matriz proporcionada.
+
+.EXAMPLE
+.
+\ejercicio2.ps1 -matriz "mapa1.txt" -camino
+Encuentra el camino más corto en tiempo entre estaciones basado en la matriz proporcionada.
+#>
+
+[CmdletBinding()]
+param (
+    [Parameter(Mandatory, Position = 0, HelpMessage = 'Ruta del archivo de la matriz de adyacencia.')]
+    [string]$Matriz,
+
+    [Parameter(HelpMessage = 'Determina qué estación es el "hub" (estación con más conexiones) de la red. No se puede usar junto con -Camino.')]
+    [switch]$Hub,
+
+    [Parameter(HelpMessage = 'Encuentra el camino más corto en tiempo. No se puede usar junto a -Hub.')]
+    [switch]$Camino,
+
+    [Parameter(HelpMessage = 'Carácter para utilizarse como separador de columnas (por defecto |).')]
+    [string]$Separador = '|'
+)
+
+# Validar que no se usen -Hub y -Camino juntos
+if ($Hub -and $Camino) {
+    Write-Error 'No se pueden usar los parámetros -Hub y -Camino juntos.'
     exit 1
 }
 
@@ -80,7 +64,8 @@ try {
         Write-Error "El archivo de matriz no existe: $Matriz"
         exit 1
     }
-} catch {
+}
+catch {
     Write-Error "Error al validar la ruta del archivo: $_"
     exit 1
 }
@@ -88,7 +73,8 @@ try {
 # Leer la matriz solo si la ruta es válida
 if (-not [string]::IsNullOrWhiteSpace($Matriz)) {
     $lineas = Get-Content -Path $Matriz
-} else {
+}
+else {
     Write-Error "La ruta de la matriz es inválida o vacía."
     exit 1
 }
@@ -104,7 +90,7 @@ foreach ($linea in $lineas) {
             exit 1
         }
     }
-    $matriz += ,@($valores)
+    $matriz += , @($valores)
 }
 
 $numFilas = $matriz.Count
@@ -125,7 +111,7 @@ for ($i = 0; $i -lt $numFilas; $i++) {
     }
 }
 
-if ($Hub) {
+if ($hub) {
     $maxConexiones = 0
     $hubEstacion = 0
     for ($i = 0; $i -lt $numFilas; $i++) {
@@ -144,14 +130,14 @@ if ($Hub) {
     exit 0
 }
 
-if ($Camino) {
+if ($camino) {
     $infinito = [double]::MaxValue
     $dist = @()
     $next = @()
 
     for ($i = 0; $i -lt $numFilas; $i++) {
-        $dist += ,@(0..($numColumnas - 1) | ForEach-Object { if ($_ -eq $i) { 0 } elseif ([double]$matriz[$i][$_] -gt 0) { [double]$matriz[$i][$_] } else { $infinito } })
-        $next += ,@(0..($numColumnas - 1) | ForEach-Object { if ($_ -eq $i) { -1 } elseif ([double]$matriz[$i][$_] -gt 0) { $_ } else { -1 } })
+        $dist += , @(0..($numColumnas - 1) | ForEach-Object { if ($_ -eq $i) { 0 } elseif ([double]$matriz[$i][$_] -gt 0) { [double]$matriz[$i][$_] } else { $infinito } })
+        $next += , @(0..($numColumnas - 1) | ForEach-Object { if ($_ -eq $i) { -1 } elseif ([double]$matriz[$i][$_] -gt 0) { $_ } else { -1 } })
     }
 
     for ($k = 0; $k -lt $numFilas; $k++) {
