@@ -58,15 +58,18 @@
 Param(
     [Parameter(Mandatory=$true)]
     [string]
-    $Directorio = "",
-    [string]$Archivo = "",
-    [switch]$Pantalla = $false
+    $Directorio,
+
+    [Parameter(Mandatory=$false)]
+    [string]
+    $Archivo = "",
+
+    [Parameter(Mandatory=$false)]
+    [switch]
+    $Pantalla = $false
 )
 
-if (-not $Directorio) {
-    Write-Error "No se ingresó la ruta del directorio."
-    exit 1
-}
+
 if (-not $Pantalla -and -not $Archivo) {
     Write-Error "No se especificó archivo de salida ni pantalla."
     exit 1
