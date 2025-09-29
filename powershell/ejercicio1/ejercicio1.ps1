@@ -1,27 +1,68 @@
-# Script: ejercicio1.ps1
-# Uso: .\ejercicio1.ps1 -Directorio <ruta> [-Archivo <salida.json>] [-Pantalla] [-Help]
+<#
+    .SYNOPSIS 
+    Analiza los resultados de encuestas de satisfacción de clientes.
 
-param(
-    [string]$Directorio = "",
+    .DESCRIPTION 
+    El script para analiza los resultados de encuestas de satisfacción de clientes de un servicio de 
+    atención al cliente. Los datos se registran diariamente en archivos de texto, con cada encuesta en una 
+    línea. 
+    El archivo de registro tiene un formato de campos fijos, donde la posición de cada campo indica su 
+    significado, y los campos están separados por un pipe (|). El nombre del archivo tendrá la fecha de registro 
+    de las encuestas. 
+
+    .PARAMETER directorio
+    Ruta del directorio con archivos de encuestas (.txt).
+
+    .PARAMETER archivo
+    Ruta completa del archivo JSON de salida. No usar con archivo
+
+    .PARAMETER pantalla
+    Muestra la salida por pantalla. No usar con pantalla
+
+    .EXAMPLE
+    PS> .\ejercicio1.ps1 -directorio ./encuestas -archivo ./salida.json
+        { 
+            "2025-06-30": { 
+                "Telefono": { 
+                "tiempo_respuesta_promedio": 7.8, 
+                "nota_satisfaccion_promedio": 2 
+                }, 
+            }, 
+            "2025-07-01": { 
+                "Telefono": { 
+                "tiempo_respuesta_promedio": 7.8, 
+                "nota_satisfaccion_promedio": 2 
+                }, 
+                "Email": { 
+                "tiempo_respuesta_promedio": 120, 
+                "nota_satisfaccion_promedio": 5 
+                }, 
+                "Chat": { 
+                "tiempo_respuesta_promedio": 2.1, 
+                "nota_satisfaccion_promedio": 3 
+                } 
+            }
+        }
+
+    .INPUTS
+    Ninguno. No puedes canalizar elementos a traves del pipeline.
+
+    .OUTPUTS
+    System.Text.Json.
+
+    .FUNCTIONALITY
+    El script procesa todos los archivos de encuestas en un directorio, calcula el tiempo de respuesta 
+    promedio y la nota de satisfacción promedio por canal de atención y por día. El resultado es ser un archivo o una 
+    impresión en pantalla, ambas en formato JSON.
+#>
+Param(
+    [Parameter(Mandatory=$true)]
+    [string]
+    $Directorio = "",
     [string]$Archivo = "",
-    [switch]$Pantalla = $false,
-    [switch]$Help = $false
+    [switch]$Pantalla = $false
 )
 
-function Show-Help {
-    Write-Host @"
-Uso: ejercicio1.ps1 -Directorio <DIR> [-Archivo <FILE>] [-Pantalla] [-Help]
-
-Opciones:
-  -Directorio <DIR>   Ruta del directorio con archivos de encuestas (.txt)
-  -Archivo <FILE>     Ruta completa del archivo JSON de salida. No usar con -Pantalla
-  -Pantalla           Muestra la salida por pantalla. No usar con -Archivo
-  -Help               Muestra este mensaje de ayuda
-"@
-    exit 0
-}
-
-if ($Help) { Show-Help }
 if (-not $Directorio) {
     Write-Error "No se ingresó la ruta del directorio."
     exit 1
