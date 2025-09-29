@@ -104,27 +104,29 @@ function procesamiento_archivos(){
     PIDFILE="/tmp/audit_${REPO_HASH}.pid"
     #### SE OBTIENE PID (SI ES QUE HAY)
     PID=$(cat "$PIDFILE" 2>/dev/null;)
-
-    #### PROCESAMIENTO DE ARCHIVO .log
-    if [[ "$LOG" == .* ]]; then
-        LOG="$me_DIR/$LOG"
-    fi
-
-    if ! find "$LOG" >/dev/null 2>&1; then
-        touch $LOG
-    fi
-
-    #### PROCESAMIENTO DE ARCHIVO .conf
-    if [[ "$CONFIG" == .* ]]; then
-        CONFIG="$me_DIR/$CONFIG"
-    fi
-
-    mapfile -t REGEX < <(cat $CONFIG)
-
-    if [ ${#REGEX[@]} -eq 0 ]
+    if [[ "$KILL" = false ]]; 
     then
-        echo "ARCHIVO CONFIG VACIO" 
-        exit 1
+        #### PROCESAMIENTO DE ARCHIVO .log
+        if [[ "$LOG" == .* ]]; then
+            LOG="$me_DIR/$LOG"
+        fi
+
+        if ! find "$LOG" >/dev/null 2>&1; then
+            touch $LOG
+        fi
+
+        #### PROCESAMIENTO DE ARCHIVO .conf
+        if [[ "$CONFIG" == .* ]]; then
+            CONFIG="$me_DIR/$CONFIG"
+        fi
+
+        mapfile -t REGEX < <(cat $CONFIG)
+
+        if [ ${#REGEX[@]} -eq 0 ]
+        then
+            echo "ARCHIVO CONFIG VACIO" 
+            exit 1
+        fi
     fi
 }
 
