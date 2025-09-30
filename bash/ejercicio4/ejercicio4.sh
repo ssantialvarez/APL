@@ -215,6 +215,8 @@ fi
 if [ "$1" != "XXrefork_daemonXX" ] ; then # 1. Proceso padre.
     procesamiento_parametros "$@"
 
+    verifica_paquete
+
     procesamiento_archivos
 
     if [[ "$KILL" == true ]]
@@ -254,7 +256,6 @@ PIDFILE="$5"
 
 echo $$ > $PIDFILE
 
-verifica_paquete
 #### LOOP PRINCIPAL
 inotifywait -m -r -e close_write,create,delete "$REPO" | while read dir event file; do
     full_path="$dir$file"
