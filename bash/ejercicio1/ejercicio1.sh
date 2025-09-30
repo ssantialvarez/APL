@@ -86,12 +86,12 @@ function procesamiento_parametros(){
 function procesamiento_archivos(){
     # Se verifica que el directorio tenga archivos .txt
     # Se desactiva nullglob para encontrar los archivos que tengan el patron que buscamos 
-    shopt -s nullglob
-    ARCHIVOS=("$DIRECTORIO"/*.txt)
-    shopt -u nullglob
+    ARCHIVOS=()
+    while IFS= read -r -d $'\0' file; do
+        ARCHIVOS+=("$file")
+    done < <(find "$DIRECTORIO" -maxdepth 1 -type f -name '*.txt' -print0)
 
-    if [[ ${#ARCHIVOS[@]} -eq 0 ]] 
-    then
+    if [[ ${#ARCHIVOS[@]} -eq 0 ]]; then
         echo "Directorio vacio. $DIRECTORIO"
         exit 1
     fi
@@ -113,11 +113,10 @@ function procesamiento_archivos(){
         fi
     fi
 
-    touch $PATH_ENCUESTAS
-    for item in ${ARCHIVOS[@]}
-    do
-        cat $item >> $PATH_ENCUESTAS
-        echo  >> $PATH_ENCUESTAS
+    touch "$PATH_ENCUESTAS"
+    for item in "${ARCHIVOS[@]}"; do
+        cat "$item" >> "$PATH_ENCUESTAS"
+        echo  >> "$PATH_ENCUESTAS"
     done
 
     awk 'BEGIN{FS="|"; tee = "tee /tmp/out.txt"}{split($2,a," "); print a[1], $3, $4, $5 | tee}' $PATH_ENCUESTAS >> /dev/null 
