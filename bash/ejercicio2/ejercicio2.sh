@@ -9,7 +9,7 @@
 # https://labex.io/tutorials/shell-bash-getopt-391993
 function help() {
     cat << EOF
-Usage: $0 [-m|--matriz MAT] [-h|--hub HUB] [-c|--camino PATH] [-s|--separador FS] [-h|--help]
+Usage: $0 [-m|--matriz MAT] [-h|--hub HUB] [-c|--camino PATH] [-s|--separador FS] [--help]
 
 Options:
   -m, --matriz MAT       Ruta del archivo de la matriz de adyacencia.
@@ -17,7 +17,7 @@ Options:
   -c, --camino PATH      Encuentra el camino más corto en tiempo. No se puede usar junto a -h / -hub.
   -s, --separador FS     Carácter para utilizarse como separador de columnas.
 
-  -h, --help             Muestra este mensaje de ayuda
+  --help             Muestra este mensaje de ayuda
 EOF
     exit 1
 }
@@ -81,6 +81,11 @@ if [ -n "$HUB" ] && [ -n "$CAMINO" ]; then
 fi
 if [ ! -f "$MATRIZ" ]; then
     echo "El archivo de matriz no existe: $MATRIZ" >&2
+    exit 1
+fi
+
+if [ -z "$HUB" ] && [ -z "$CAMINO" ]; then
+    echo "Debe especificar --hub o --camino" >&2
     exit 1
 fi
 
