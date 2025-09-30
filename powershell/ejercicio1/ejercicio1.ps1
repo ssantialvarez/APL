@@ -61,28 +61,20 @@
     impresión en pantalla, ambas en formato JSON.
 #>
 Param(
-    [Parameter(Mandatory=$true)]
-    [string]
-    $Directorio,
 
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory=$true, ParameterSetName="ArchivoSet")]
     [string]
     $Archivo = "",
 
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory=$true, ParameterSetName="PantallaSet")]
     [switch]
-    $Pantalla = $false
+    $Pantalla = $false,
+
+    [Parameter(Mandatory=$true, ParameterSetName="ArchivoSet")]
+    [Parameter(Mandatory=$true, ParameterSetName="PantallaSet")]
+    [string]
+    $Directorio
 )
-
-
-if (-not $Pantalla -and -not $Archivo) {
-    Write-Error "No se especificó archivo de salida ni pantalla."
-    exit 1
-}
-if ($Pantalla -and $Archivo) {
-    Write-Error "Argumentos conflictivos: no se puede usar -Pantalla y -Archivo juntos."
-    exit 1
-}
 
 $archivos = Get-ChildItem -Path $Directorio -Filter *.txt
 if ($archivos.Count -eq 0) {
