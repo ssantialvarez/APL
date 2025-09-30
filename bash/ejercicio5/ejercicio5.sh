@@ -1,13 +1,15 @@
 #!/bin/bash
 
-# ----- Variables -----------
+# INTEGRANTES DEL GRUPO
+# - Santiago Alvarez
+# - Federico Loiero
+# - Federico Rossendy
 
-# Nombre pais
+
+# Nombre países
 NOMBRE=""
 # Tiempo en segundos que se guarda la cache
 TTL=""
-
-# ---------------------------
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -25,8 +27,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         esac
 done
-
-# Comprobamos que se han pasado los argumentos necesarios
 
 if [[ -z "$NOMBRE" || -z "$TTL" ]]; then
     echo "Uso: $0 -n <nombre> -t <ttl>"
@@ -53,10 +53,7 @@ for pais in "${PAISES[@]}"; do
     if [[ -f "$cache_file" ]]; then
         echo "Cargando información de caché para el país $pais"
 
-        # Si se proporcionó TTL lo interpretamos como segundos
         if [[ -n "$TTL" ]]; then
-            # Obtener la última modificación del fichero en epoch (segundos)
-            # stat -c %Y funciona en GNU stat (WSL/Linux). Intentamos fallback a date -r si no está disponible.
             file_mtime=$(stat -c %Y "$cache_file" 2>/dev/null || date -r "$cache_file" +%s 2>/dev/null || echo 0)
             age=$(( $(date +%s) - file_mtime ))
             if (( age > TTL )); then
@@ -65,17 +62,14 @@ for pais in "${PAISES[@]}"; do
                 result=$(get_country_info "$pais")
                 status="${result%%|*}"
                 body="${result#*|}"
-                # Solo sobrescribimos la caché si la consulta fue correcta
                 if [[ "$status" == "200" ]]; then
                     echo "$body" > "$cache_file"
                 fi
             else
-                # Caché aún válida
                 body=$(<"$cache_file")
                 status="200"
             fi
         else
-            # Sin TTL: usamos siempre la caché existente
             body=$(<"$cache_file")
             status="200"
         fi

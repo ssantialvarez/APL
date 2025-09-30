@@ -1,3 +1,8 @@
+﻿# INTEGRANTES DEL GRUPO
+# - Santiago Alvarez
+# - Federico Loiero
+# - Federico Rossendy
+
 <#
     .SYNOPSIS 
     Analiza los resultados de encuestas de satisfacción de clientes.

@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# INTEGRANTES DEL GRUPO
+# - Santiago Alvarez
+# - Federico Loiero
+# - Federico Rossendy
+
+
 # https://labex.io/tutorials/shell-bash-getopt-391993
 function help() {
     cat << EOF

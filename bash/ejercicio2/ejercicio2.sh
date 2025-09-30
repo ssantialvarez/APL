@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# INTEGRANTES DEL GRUPO
+# - Santiago Alvarez
+# - Federico Loiero
+# - Federico Rossendy
+
+
 # https://labex.io/tutorials/shell-bash-getopt-391993
 function help() {
     cat << EOF
@@ -135,7 +141,7 @@ done
 # echo "Matriz válida: $num_filas x $num_columnas"
 echo "## Informe de análisis de red de transporte"
 
-# Ajustar la lógica para el cálculo del hub
+# Lógica para el cálculo del hub
 if [ -n "$HUB" ]; then
     max_conexiones=0
     hub_estacion=0
@@ -143,7 +149,6 @@ if [ -n "$HUB" ]; then
         conexiones=0
         for ((j=0; j<num_columnas; j++)); do
             idx=$((i*num_columnas+j))
-            # No contar la diagonal y solo contar conexiones directas (valor > 0)
             if [ $i -ne $j ] && (( $(echo "${matriz[$idx]} > 0" | bc -l) )); then
                 ((conexiones++))
             fi
@@ -198,7 +203,7 @@ if [ -n "$CAMINO" ]; then
     # Encontrar el tiempo mínimo entre todas las estaciones
     tiempo_minimo=$infinito
     for ((i=0; i<num_filas; i++)); do
-        for ((j=i+1; j<num_filas; j++)); do  # Evitar caminos repetidos
+        for ((j=i+1; j<num_filas; j++)); do 
             idx=$((i*num_columnas+j))
             if (( $(echo "${dist[$idx]} < $tiempo_minimo" | bc -l) )); then
                 tiempo_minimo=${dist[$idx]}
@@ -208,7 +213,7 @@ if [ -n "$CAMINO" ]; then
 
     # Mostrar los caminos con el tiempo mínimo
     for ((origen=0; origen<num_filas; origen++)); do
-        for ((destino=origen+1; destino<num_filas; destino++)); do  # Evitar caminos repetidos
+        for ((destino=origen+1; destino<num_filas; destino++)); do
             idx_od=$((origen*num_columnas+destino))
             if (( $(echo "${dist[$idx_od]} == $tiempo_minimo" | bc -l) )); then
                 # Construir la ruta

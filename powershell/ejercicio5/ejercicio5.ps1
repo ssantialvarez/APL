@@ -1,4 +1,9 @@
-﻿<#
+﻿# INTEGRANTES DEL GRUPO
+# - Santiago Alvarez
+# - Federico Loiero
+# - Federico Rossendy
+
+<#
 .SYNOPSIS
     Consulta información de países utilizando la API de REST Countries.
 

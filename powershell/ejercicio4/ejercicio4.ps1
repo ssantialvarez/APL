@@ -1,3 +1,8 @@
+# INTEGRANTES DEL GRUPO
+# - Santiago Alvarez
+# - Federico Loiero
+# - Federico Rossendy
+
 <#
     .SYNOPSIS 
     Demonio para monitorear un repositorio Git y detectar credenciales o datos sensibles que se hayan subido por error.

@@ -1,4 +1,9 @@
-﻿<#
+﻿# INTEGRANTES DEL GRUPO
+# - Santiago Alvarez
+# - Federico Loiero
+# - Federico Rossendy
+
+<#
 .SYNOPSIS
 Script para analizar rutas en una red de transporte público.
 

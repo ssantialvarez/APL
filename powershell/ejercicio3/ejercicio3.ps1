@@ -1,3 +1,8 @@
+# INTEGRANTES DEL GRUPO
+# - Santiago Alvarez
+# - Federico Loiero
+# - Federico Rossendy
+
 # Script: ejercicio3.ps1
 # Uso: .\ejercicio3.ps1 usb,invalid
 
