@@ -37,29 +37,19 @@ Encuentra el camino más corto en tiempo entre estaciones basado en la matriz pr
 
 [CmdletBinding()]
 param (
-    [Parameter(Mandatory, Position = 0, HelpMessage = 'Ruta del archivo de la matriz de adyacencia.')]
-    [string]$Matriz,
-
-    [Parameter(HelpMessage = 'Determina qué estación es el "hub" (estación con más conexiones) de la red. No se puede usar junto con -Camino.')]
+    [Parameter(Mandatory=$true, ParameterSetName="HubSet", HelpMessage = 'Determina qué estación es el "hub" (estación con más conexiones) de la red. No se puede usar junto con -Camino.')]
     [switch]$Hub,
 
-    [Parameter(HelpMessage = 'Encuentra el camino más corto en tiempo. No se puede usar junto a -Hub.')]
+    [Parameter(Mandatory=$true, ParameterSetName="CaminoSet", HelpMessage = 'Encuentra el camino más corto en tiempo. No se puede usar junto a -Hub.')]
     [switch]$Camino,
+
+    [Parameter(Mandatory=$true, ParameterSetName="HubSet", Position = 0, HelpMessage = 'Ruta del archivo de la matriz de adyacencia.')]
+    [Parameter(Mandatory=$true, ParameterSetName="CaminoSet", Position = 0, HelpMessage = 'Ruta del archivo de la matriz de adyacencia.')]
+    [string]$Matriz,
 
     [Parameter(HelpMessage = 'Carácter para utilizarse como separador de columnas (por defecto |).')]
     [string]$Separador = '|'
 )
-
-# Validar que no se usen -Hub y -Camino juntos
-if ($Hub -and $Camino) {
-    Write-Error 'No se pueden usar los parámetros -Hub y -Camino juntos.'
-    exit 1
-}
-
-if (-not $Hub -and -not $Camino) {
-    Write-Error 'Debe especificar al menos uno de los parámetros: -Hub o -Camino.'
-    exit 1
-}
 
 # Convertir la ruta a absoluta si es relativa
 if (-not (Test-Path -Path $Matriz)) {
