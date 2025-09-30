@@ -16,12 +16,7 @@ En este ejemplo, las palabras clave podrían ser "USB" y "Invalid".
  
 Ejemplo de salida 
 USB: 2 
-Invalid: 2 
- 
- 
-Virtualización de Hardware – APL  2025 – Q2 
-6 de 8 
- 
+Invalid: 2  
  
 Consideraciones: 
 1. El script debe usar AWK para procesar la información en Bash. 
