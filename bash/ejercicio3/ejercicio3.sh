@@ -8,23 +8,19 @@
 # https://labex.io/tutorials/shell-bash-getopt-391993
 function help() {
     cat << EOF
-Usage: $0 [-d|--directorio DIR] [-a|--archivo FILE] [-p|--pantalla SCREEN] [-h|--help]
+Usage: $0 [-d|--directorio DIR] [-p|--palabras WORDS] [-h|--help]
 
 Options:
-  -d, --directorio DIR       Especifica ruta del directorio con los archivos de encuestas a procesar
-  -a, --archivo FILE         Especifica ruta completa del archivo JSON de salida. No se puede usar con -p / --pantalla
-  -p, --pantalla SCREEN      Muestra la salida por pantalla. No se puede usar con -a / --archivo
+  -d, --directorio DIR        Especifica ruta del directorio con los archivos de logs a analizar
+  -p, --palabras WORDS        Lista de palabras clave a contabilizar, separadas por comas.
 
-  -h, --help                 Muestra este mensaje de ayuda
+  -h, --help                  Muestra este mensaje de ayuda
 EOF
     exit 1
 }
 
-declare -a RESULTADO
-RESULTADO=()
-DIRECTORIO=""
-ARCHIVO=""
-PANTALLA=false
+DIR=""
+PALABRAS=""
 
 options=$(getopt -o d:p: --l help,directorio:,palabras -- "$@" 2> /dev/null)
 uso() {
@@ -43,6 +39,11 @@ while [[ $# -gt 0 ]]; do
         -p|--palabras)
             PALABRAS="$2"
             shift 2
+            ;;
+
+        -h|--help)
+            help
+            exit 0
             ;;
         *)
             uso
