@@ -96,6 +96,23 @@ function procesamiento_archivos(){
         exit 1
     fi
 
+    # Verificar que $ARCHIVO NO sea un directorio y que se pueda crear o escribir en el archivo
+    if [ -n "$ARCHIVO" ]
+    then
+        if [ -d "$ARCHIVO" ]
+        then
+            echo "$0: la ruta de salida es un directorio." >&2
+            exit 1
+        fi
+
+        touch "$ARCHIVO" 2> /dev/null
+        if [ "$?" != "0" ]
+        then
+            echo "$0: no se puede crear o escribir en el archivo de salida." >&2
+            exit 1
+        fi
+    fi
+
     touch $PATH_ENCUESTAS
     for item in ${ARCHIVOS[@]}
     do
