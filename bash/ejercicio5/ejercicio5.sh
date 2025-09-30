@@ -5,6 +5,17 @@
 # - Federico Loiero
 # - Federico Rossendy
 
+function help() {
+    cat << EOF
+Usage: $0 [-n|--nombre NAME] [-t|--ttl TTL]
+Options:
+  -n, --nombre NAME          Nombre del país o países a consultar, separados por comas.
+  -t, --ttl TTL              Tiempo en segundos que se guarda la cache. Si no se especifica, no se usa cache.
+
+  -h, --help                 Muestra este mensaje de ayuda
+EOF
+    exit 1
+}
 
 # Nombre países
 NOMBRE=""
@@ -20,6 +31,10 @@ while [[ $# -gt 0 ]]; do
         -t|--ttl)
             TTL="$2"
             shift 2
+            ;;
+        -h|--help)
+            help
+            exit 0
             ;;
         *)
             echo "Uso: $0 -n <nombre> -t <ttl>"
