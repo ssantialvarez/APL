@@ -24,7 +24,7 @@
 
 param(
     [Parameter(Mandatory = $true, Position = 0)]
-    [string]$nombre,
+    [string[]]$nombre,
     [Parameter(Mandatory = $true, Position = 1)]
     [int]$ttl
 )
