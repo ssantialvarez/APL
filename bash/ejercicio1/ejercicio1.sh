@@ -21,6 +21,118 @@ EOF
     exit 0
 }
 
+function procesamiento_parametros(){
+    options=$(getopt -o d:a:ph --l help,directorio:,pantalla,archivo: -- "$@" 2> /dev/null)
+    if [ "$?" != "0" ]
+    then
+        echo "$0: no se ingresó la ruta del directorio o no se especificó archivo de salida ni pantalla." >&2
+        exit 1
+    fi
+
+    eval set -- "$options"
+
+    while true
+    do
+        case "$1" in 
+            -d | --directorio)
+                DIRECTORIO="$2"
+                shift 2
+
+                ;;
+            -p | --pantalla)
+                PANTALLA=true
+                shift 
+                
+                ;;
+            -a | --archivo)
+                ARCHIVO="$2"
+                shift 2
+                
+                ;;
+            -h | --help)
+                help
+                exit 0
+                ;;
+            --) # case "--":
+                shift
+                break
+                ;;
+            *) # default: 
+                echo "$0: opcion no reconocida: $1" >&2
+                
+                exit 1
+                ;;
+        esac
+    done
+
+
+    if [ -z "$DIRECTORIO" ]; 
+    then
+        echo "$0: no se ingresó la ruta del directorio." >&2
+        exit 1
+    fi
+    if [[ "$PANTALLA" = false && -z "$ARCHIVO" ]]; 
+    then
+        echo "$0: no se especificó archivo de salida ni pantalla." >&2
+        exit 1
+    fi
+    if [[ $PANTALLA = true && -n "$ARCHIVO" ]]
+    then
+        echo "$0: argumentos conflictivos. Solo se permite una opcion de salida." >&2
+        exit 1
+    fi
+}
+
+function procesamiento_archivos(){
+    # Se verifica que el directorio tenga archivos .txt
+    # Se desactiva nullglob para encontrar los archivos que tengan el patron que buscamos 
+    shopt -s nullglob
+    ARCHIVOS=("$DIRECTORIO"/*.txt)
+    shopt -u nullglob
+
+    if [[ ${#ARCHIVOS[@]} -eq 0 ]] 
+    then
+        echo "Directorio vacio. $DIRECTORIO"
+        exit 1
+    fi
+
+    touch $PATH_ENCUESTAS
+    for item in ${ARCHIVOS[@]}
+    do
+        cat $item >> $PATH_ENCUESTAS
+        echo  >> $PATH_ENCUESTAS
+    done
+
+    awk 'BEGIN{FS="|"; tee = "tee /tmp/out.txt"}{split($2,a," "); print a[1], $3, $4, $5 | tee}' $PATH_ENCUESTAS >> /dev/null 
+
+    rm $PATH_ENCUESTAS
+
+    PATH_ENCUESTAS="/tmp/out.txt"
+    sort -k1,1 -k2,2 $PATH_ENCUESTAS -o $PATH_ENCUESTAS
+    mapfile -t ENCUESTAS < <(cat $PATH_ENCUESTAS)
+
+    rm $PATH_ENCUESTAS
+}
+
+function calcular_promedios(){
+    TIEMPO_PROMEDIO=$(echo "scale = 3; $TIEMPO_PROMEDIO / $CONTADOR" | bc -l)
+    NOTA_PROMEDIO=$(echo "scale = 3; $NOTA_PROMEDIO / $CONTADOR" | bc -l)
+    
+    CANAL_JSON=$(jq -n \
+        --arg tiempo "$TIEMPO_PROMEDIO" \
+        --arg nota "$NOTA_PROMEDIO" \
+        '{
+            "tiempo_respuesta_promedio": ($tiempo | tonumber),
+            "nota_satisfaccion_promedio": ($nota | tonumber)
+        }')
+
+    
+    JSON_OUTPUT=$(echo "$JSON_OUTPUT" | jq \
+        --arg fecha "$FECHA" \
+        --arg canal "$CANAL" \
+        --argjson canal_data "$CANAL_JSON" \
+        '.[$fecha][$canal] = $canal_data')
+}
 
 declare -a ENCUESTAS
 ENCUESTAS=()
@@ -29,94 +141,10 @@ ARCHIVO=""
 PANTALLA=false
 PATH_ENCUESTAS="/tmp/fechas.txt"
 
-options=$(getopt -o d:a:ph --l help,directorio:,pantalla,archivo: -- "$@" 2> /dev/null)
-if [ "$?" != "0" ]
-then
-    echo "$0: no se ingresó la ruta del directorio o no se especificó archivo de salida ni pantalla." >&2
-    exit 1
-fi
+procesamiento_parametros "$@"
 
-eval set -- "$options"
+procesamiento_archivos
 
-while true
-do
-    case "$1" in 
-        -d | --directorio)
-            DIRECTORIO="$2"
-            shift 2
-
-            ;;
-        -p | --pantalla)
-            PANTALLA=true
-            shift 
-            
-            ;;
-        -a | --archivo)
-            ARCHIVO="$2"
-            shift 2
-            
-            ;;
-        -h | --help)
-            help
-            exit 0
-            ;;
-        --) # case "--":
-            shift
-            break
-            ;;
-        *) # default: 
-            echo "$0: opcion no reconocida: $1" >&2
-            
-            exit 1
-            ;;
-    esac
-done
-
-
-if [ -z "$DIRECTORIO" ]; 
-then
-    echo "$0: no se ingresó la ruta del directorio." >&2
-    exit 1
-fi
-if [[ "$PANTALLA" = false && -z "$ARCHIVO" ]]; 
-then
-    echo "$0: no se especificó archivo de salida ni pantalla." >&2
-    exit 1
-fi
-if [[ $PANTALLA = true && -n "$ARCHIVO" ]]
-then
-    echo "$0: argumentos conflictivos." >&2
-    exit 1
-fi
-
-# Se verifica que el directorio tenga archivos txt
-# Se desactiva nullglob para encontrar los archivos que tengan el patron que buscamos 
-shopt -s nullglob
-ARCHIVOS=("$DIRECTORIO"/*.txt)
-shopt -u nullglob
-
-if [[ ${#ARCHIVOS[@]} -eq 0 ]] 
-then
-    echo "Directorio vacio. $DIRECTORIO"
-    exit 1
-fi
-
-touch $PATH_ENCUESTAS
-for item in ${ARCHIVOS[@]}
-do
-    cat $item >> $PATH_ENCUESTAS
-    echo  >> $PATH_ENCUESTAS
-done
-
-awk 'BEGIN{FS="|"; tee = "tee /tmp/out.txt"}{split($2,a," "); print a[1], $3, $4, $5 | tee}' $PATH_ENCUESTAS >> /dev/null 
-
-rm $PATH_ENCUESTAS
-
-PATH_ENCUESTAS="/tmp/out.txt"
-sort -k1,1 -k2,2 $PATH_ENCUESTAS -o $PATH_ENCUESTAS
-mapfile -t ENCUESTAS < <(cat $PATH_ENCUESTAS)
-
-rm $PATH_ENCUESTAS
 
 IFS=' ' read -ra ADDR <<< "${ENCUESTAS[0]}"
 
@@ -147,26 +175,7 @@ do
 
     if [ $CALCULAR = true ]
     then
-        TIEMPO_PROMEDIO=$(echo "scale = 3; $TIEMPO_PROMEDIO / $CONTADOR" | bc -l)
-        NOTA_PROMEDIO=$(echo "scale = 3; $NOTA_PROMEDIO / $CONTADOR" | bc -l)
-        
-
-       
-        CANAL_JSON=$(jq -n \
-            --arg tiempo "$TIEMPO_PROMEDIO" \
-            --arg nota "$NOTA_PROMEDIO" \
-            '{
-                "tiempo_respuesta_promedio": ($tiempo | tonumber),
-                "nota_satisfaccion_promedio": ($nota | tonumber)
-            }')
-
-        
-        JSON_OUTPUT=$(echo "$JSON_OUTPUT" | jq \
-            --arg fecha "$FECHA" \
-            --arg canal "$CANAL" \
-            --argjson canal_data "$CANAL_JSON" \
-            '.[$fecha][$canal] = $canal_data')
-
+        calcular_promedios
 
         
         FECHA=${ADDR[0]}
@@ -177,6 +186,9 @@ do
         CALCULAR=false
     fi
 done
+
+calcular_promedios
+
 
 
 if [ "$PANTALLA" = true ]
